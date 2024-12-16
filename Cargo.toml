@@ -10,6 +10,7 @@ harness = false
 
 [dependencies]
 logwise = "0.2.1"
+atomic_float = "1.1.0"
 
 # macos
 [target.'cfg(target_os = "macos")'.dependencies]

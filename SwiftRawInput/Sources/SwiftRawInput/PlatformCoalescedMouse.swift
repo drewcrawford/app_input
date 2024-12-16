@@ -64,7 +64,8 @@ final class PlatformCoalescedMouse:
                 raw_input_mouse_button(context, UInt8(event.buttonNumber), true)
             case .otherMouseUp:
                 raw_input_mouse_button(context, UInt8(event.buttonNumber), false)
-            
+            case .scrollWheel:
+                raw_input_mouse_scroll(context, event.scrollingDeltaX, event.scrollingDeltaY)
             default:
                 fatalError("\(event)")
             }

@@ -40,6 +40,15 @@ extern "C" fn raw_input_mouse_button(ctx: *const c_void, button: u8, down: bool)
 
 }
 
+#[no_mangle]
+extern "C" fn raw_input_mouse_scroll(ctx: *const c_void, delta_x: f64, delta_y: f64) {
+    let weak = unsafe { Weak::from_raw(ctx as *const Shared)};
+    if let Some(shared) = weak.upgrade() {
+        shared.add_scroll_delta(delta_x, delta_y);
+    }
+    std::mem::forget(weak);
+}
+
 
 
 extern "C" {

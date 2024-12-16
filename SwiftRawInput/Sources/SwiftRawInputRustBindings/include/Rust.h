@@ -12,3 +12,4 @@ extern void raw_input_finish_mouse_event_context(const void* context);
 extern void raw_input_key_notify_func(const void *context, uint16_t keyCode, bool pressed);
 extern void raw_input_mouse_move(const void *context, double screenPosX, double screenPosY, const void *window, double windowPosX, double windowPosY, double windowWidth, double windowHeight);
 extern void raw_input_mouse_button(const void *context, uint8_t button, bool down);
+extern void raw_input_mouse_scroll(const void *context, double deltaX, double deltaY);

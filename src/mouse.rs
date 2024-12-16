@@ -1,11 +1,13 @@
 #[cfg(target_os = "macos")]
 pub(crate) mod macos;
 
+use std::iter::Scan;
 #[cfg(target_os = "macos")]
 pub(crate) use macos as sys;
 
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicU64};
+use atomic_float::AtomicF64;
 
 /**
 Mouse's location in the window, in points.
@@ -51,7 +53,10 @@ impl MouseAbsoluteLocation {
 struct Shared {
     abs: std::sync::Mutex<Option<MouseAbsoluteLocation>>,
     window: std::sync::Mutex<Option<MouseWindowLocation>>,
+
     buttons: [AtomicBool; 255],
+    scroll_delta_x: AtomicF64,
+    scroll_delta_y: AtomicF64,
 }
 impl Shared {
     fn new() -> Self {
@@ -59,6 +64,8 @@ impl Shared {
             abs: std::sync::Mutex::new(None),
             window: std::sync::Mutex::new(None),
             buttons: [const {AtomicBool::new(false)}; 255],
+            scroll_delta_x: AtomicF64::new(0.0),
+            scroll_delta_y: AtomicF64::new(0.0),
         }
     }
     fn set_absolute_location(&self, location: MouseAbsoluteLocation) {
@@ -72,6 +79,12 @@ impl Shared {
     fn set_key_state(&self, key: u8, down: bool) {
         logwise::debuginternal_sync!("Set mouse key {key} state {down}",key=key,down=down);
         self.buttons[key as usize].store(down, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    fn add_scroll_delta(&self, delta_x: f64, delta_y: f64) {
+        logwise::debuginternal_sync!("Add mouse scroll delta {delta_x},{delta_y}",delta_x=delta_x,delta_y=delta_y);
+        self.scroll_delta_x.fetch_add(delta_x, std::sync::atomic::Ordering::Relaxed);
+        self.scroll_delta_y.fetch_add(delta_y, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
