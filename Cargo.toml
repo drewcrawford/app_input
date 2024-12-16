@@ -9,6 +9,7 @@ path = "main_thread_tests/main.rs"
 harness = false
 
 [dependencies]
+logwise = "0.2.1"
 
 # macos
 [target.'cfg(target_os = "macos")'.dependencies]

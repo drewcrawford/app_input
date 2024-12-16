@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 use std::sync::{Arc, Weak};
-use crate::mouse::Shared;
+use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation, Shared};
 
 #[derive(Debug)]
 pub(crate) struct PlatformCoalescedMouse {
@@ -17,8 +17,17 @@ extern "C" fn raw_input_finish_mouse_event_context(ctx: *mut c_void) {
 }
 
 #[no_mangle]
-extern "C" fn raw_input_mouse_move(ctx: *const c_void, abs_pos_x: f64, abs_pos_y: f64) {
-    println!("abs_pos_x: {}, abs_pos_y: {}", abs_pos_x, abs_pos_y);
+extern "C" fn raw_input_mouse_move(ctx: *const c_void, abs_pos_x: f64, abs_pos_y: f64, window: *const c_void, window_pos_x: f64, window_pos_y: f64, window_width: f64, window_height: f64) {
+    let weak = unsafe { Weak::from_raw(ctx as *const Shared) };
+    if let Some(shared) = weak.upgrade() {
+        if !window.is_null() {
+            let loc = MouseWindowLocation::new(window_pos_x, window_pos_y, window_width, window_height);
+            shared.set_window_location(loc);
+        }
+        let mouse_loc = MouseAbsoluteLocation::new(abs_pos_x, abs_pos_y);
+        shared.set_absolute_location(mouse_loc);
+    }
+    std::mem::forget(weak);
 }
 
 
