@@ -27,6 +27,10 @@ impl Shared {
             key_states: vec,
         }
     }
+
+    fn set_key_state(&self, key: KeyboardKey, state: bool) {
+        self.key_states[key as usize].store(state, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 
@@ -42,7 +46,7 @@ impl Keyboard {
     */
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
-        let platform_coalesced_keyboard = PlatformCoalescedKeyboard::new(shared.clone());
+        let platform_coalesced_keyboard = PlatformCoalescedKeyboard::new(&shared);
         Self {
             shared,
             platform_coalesced_keyboard,

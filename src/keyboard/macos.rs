@@ -2,6 +2,7 @@ use std::ffi::c_void;
 use std::sync::Weak;
 use std::sync::Arc;
 use crate::keyboard::key::KeyboardKey;
+use crate::keyboard::Shared;
 
 pub struct PlatformCoalescedKeyboard {
     imp: *mut c_void,
@@ -10,8 +11,17 @@ pub struct PlatformCoalescedKeyboard {
 
 
 unsafe extern "C" fn key_notify_func(ctx: *mut c_void, key_code: u16, down: bool) {
-    let key_code = KeyboardKey::from_code(key_code).expect("Unknown key code {key_code}");
-    println!("{key_code:?}")
+    let shared = Weak::from_raw(ctx as *const Shared);
+    if let Some(shared) = shared.upgrade() {
+        let key_code = KeyboardKey::from_code(key_code).expect("Unknown key code {key_code}");
+        shared.set_key_state(key_code, down);
+    }
+    std::mem::forget(shared); //keep weak reference alive as it is still owned by the target function
+}
+
+#[no_mangle]
+unsafe extern "C" fn raw_input_finish_event_context(ctx: *mut c_void) {
+    Weak::from_raw(ctx);
 }
 
 extern "C" {
@@ -35,8 +45,8 @@ unsafe impl Send for PlatformCoalescedKeyboard {}
 unsafe impl Sync for PlatformCoalescedKeyboard {}
 
 impl PlatformCoalescedKeyboard {
-    pub fn new(shared: Arc<crate::keyboard::Shared>) -> Self {
-        let weak = Arc::downgrade(&shared);
+    pub fn new(shared: &Arc<Shared>) -> Self {
+        let weak = Arc::downgrade(shared);
         let weak_raw = Weak::into_raw(weak) as *const c_void;
         PlatformCoalescedKeyboard {
             imp: unsafe { PlatformCoalescedKeyboardNew(key_notify_func, weak_raw) },

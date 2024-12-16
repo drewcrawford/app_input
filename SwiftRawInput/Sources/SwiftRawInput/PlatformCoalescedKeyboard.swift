@@ -10,6 +10,7 @@ import AppKit
 #else
 #error("This platform is not yet supported")
 #endif
+import SwiftRawInputRustBindings
 
 final class PlatformCoalescedKeyboard:
     /*Rust type implements send/sync
@@ -79,6 +80,8 @@ final class PlatformCoalescedKeyboard:
         if let monitor {
             NSEvent.removeMonitor(monitor)
         }
+        raw_input_finish_event_context(self.context)
+        
     }
 }
 

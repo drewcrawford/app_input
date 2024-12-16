@@ -15,6 +15,7 @@ let package = Package(
         .package(url: "https://github.com/Brendonovich/swift-rs", from: "1.0.7")
     ],
     targets: [
+        .target(name: "SwiftRawInputRustBindings"),
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
@@ -23,7 +24,8 @@ let package = Package(
                 .product(
                     name: "SwiftRs",
                     package: "swift-rs"
-                )
+                ),
+                .target(name: "SwiftRawInputRustBindings"),
             ]),
         .testTarget(
             name: "SwiftRawInputTests",
