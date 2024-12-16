@@ -10,7 +10,8 @@ pub struct PlatformCoalescedKeyboard {
 
 
 
-unsafe extern "C" fn key_notify_func(ctx: *mut c_void, key_code: u16, down: bool) {
+#[no_mangle]
+unsafe extern "C" fn raw_input_key_notify_func(ctx: *mut c_void, key_code: u16, down: bool) {
     let shared = Weak::from_raw(ctx as *const Shared);
     if let Some(shared) = shared.upgrade() {
         let key_code = KeyboardKey::from_code(key_code).expect("Unknown key code {key_code}");
@@ -25,7 +26,7 @@ unsafe extern "C" fn raw_input_finish_event_context(ctx: *mut c_void) {
 }
 
 extern "C" {
-    fn PlatformCoalescedKeyboardNew(func: unsafe extern "C" fn (*mut c_void, u16, bool), context: *const c_void) -> *mut c_void;
+    fn PlatformCoalescedKeyboardNew(context: *const c_void) -> *mut c_void;
     fn PlatformCoalescedKeyboardFree(imp: *mut c_void);
 
     fn SwiftRawInputDebugWindowShow();
@@ -49,7 +50,7 @@ impl PlatformCoalescedKeyboard {
         let weak = Arc::downgrade(shared);
         let weak_raw = Weak::into_raw(weak) as *const c_void;
         PlatformCoalescedKeyboard {
-            imp: unsafe { PlatformCoalescedKeyboardNew(key_notify_func, weak_raw) },
+            imp: unsafe { PlatformCoalescedKeyboardNew(weak_raw) },
         }
     }
 }
