@@ -1,5 +1,7 @@
 use std::ffi::c_void;
+use std::sync::Weak;
 use std::sync::Arc;
+use crate::keyboard::key::KeyboardKey;
 
 pub struct PlatformCoalescedKeyboard {
     imp: *mut c_void,
@@ -7,12 +9,13 @@ pub struct PlatformCoalescedKeyboard {
 
 
 
-unsafe extern "C" fn key_notify_func(ctx: *mut c_void) {
-    println!("Hi from notify func")
+unsafe extern "C" fn key_notify_func(ctx: *mut c_void, key_code: u16, down: bool) {
+    let key_code = KeyboardKey::from_code(key_code).expect("Unknown key code {key_code}");
+    println!("{key_code:?}")
 }
 
 extern "C" {
-    fn PlatformCoalescedKeyboardNew(func: unsafe extern "C" fn (*mut c_void)) -> *mut c_void;
+    fn PlatformCoalescedKeyboardNew(func: unsafe extern "C" fn (*mut c_void, u16, bool), context: *const c_void) -> *mut c_void;
     fn PlatformCoalescedKeyboardFree(imp: *mut c_void);
 
     fn SwiftRawInputDebugWindowShow();
@@ -33,8 +36,10 @@ unsafe impl Sync for PlatformCoalescedKeyboard {}
 
 impl PlatformCoalescedKeyboard {
     pub fn new(shared: Arc<crate::keyboard::Shared>) -> Self {
+        let weak = Arc::downgrade(&shared);
+        let weak_raw = Weak::into_raw(weak) as *const c_void;
         PlatformCoalescedKeyboard {
-            imp: unsafe { PlatformCoalescedKeyboardNew(key_notify_func) },
+            imp: unsafe { PlatformCoalescedKeyboardNew(key_notify_func, weak_raw) },
         }
     }
 }
@@ -42,5 +47,116 @@ impl PlatformCoalescedKeyboard {
 impl Drop for PlatformCoalescedKeyboard {
     fn drop(&mut self) {
         unsafe{PlatformCoalescedKeyboardFree(self.imp)}
+    }
+}
+
+//keyboard codes, HIToolbox/Events.h
+impl KeyboardKey {
+    pub fn from_code(code: u16) -> Option<KeyboardKey> {
+        match code {
+            0x00 => Some(KeyboardKey::A),
+            0x01 => Some(KeyboardKey::S),
+            0x02 => Some(KeyboardKey::D),
+            0x03 => Some(KeyboardKey::F),
+            0x04 => Some(KeyboardKey::H),
+            0x05 => Some(KeyboardKey::G),
+            0x06 => Some(KeyboardKey::Z),
+            0x07 => Some(KeyboardKey::X),
+            0x08 => Some(KeyboardKey::C),
+            0x09 => Some(KeyboardKey::V),
+            0x0B => Some(KeyboardKey::B),
+            0x0C => Some(KeyboardKey::Q),
+            0x0D => Some(KeyboardKey::W),
+            0x0E => Some(KeyboardKey::E),
+            0x0F => Some(KeyboardKey::R),
+            0x10 => Some(KeyboardKey::Y),
+            0x11 => Some(KeyboardKey::T),
+            0x12 => Some(KeyboardKey::Num1),
+            0x13 => Some(KeyboardKey::Num2),
+            0x14 => Some(KeyboardKey::Num3),
+            0x15 => Some(KeyboardKey::Num4),
+            0x16 => Some(KeyboardKey::Num6),
+            0x17 => Some(KeyboardKey::Num5),
+            0x18 => Some(KeyboardKey::Equal),
+            0x19 => Some(KeyboardKey::Num9),
+            0x1A => Some(KeyboardKey::Num7),
+            0x1B => Some(KeyboardKey::Minus),
+            0x1C => Some(KeyboardKey::Num8),
+            0x1D => Some(KeyboardKey::Num0),
+            0x1E => Some(KeyboardKey::RightBracket),
+            0x1F => Some(KeyboardKey::O),
+            0x20 => Some(KeyboardKey::U),
+            0x21 => Some(KeyboardKey::LeftBracket),
+            0x22 => Some(KeyboardKey::I),
+            0x23 => Some(KeyboardKey::P),
+            0x25 => Some(KeyboardKey::L),
+            0x26 => Some(KeyboardKey::J),
+            0x27 => Some(KeyboardKey::Quote),
+            0x28 => Some(KeyboardKey::K),
+            0x29 => Some(KeyboardKey::Semicolon),
+            0x2A => Some(KeyboardKey::Backslash),
+            0x2B => Some(KeyboardKey::Comma),
+            0x2C => Some(KeyboardKey::Slash),
+            0x2D => Some(KeyboardKey::N),
+            0x2E => Some(KeyboardKey::M),
+            0x2F => Some(KeyboardKey::Period),
+            0x32 => Some(KeyboardKey::Grave),
+            0x24 => Some(KeyboardKey::Return),
+            0x30 => Some(KeyboardKey::Tab),
+            0x31 => Some(KeyboardKey::Space),
+            0x33 => Some(KeyboardKey::Delete),
+            0x35 => Some(KeyboardKey::Escape),
+            0x37 => Some(KeyboardKey::Command),
+            0x38 => Some(KeyboardKey::Shift),
+            0x39 => Some(KeyboardKey::CapsLock),
+            0x3A => Some(KeyboardKey::Option),
+            0x3B => Some(KeyboardKey::Control),
+            0x36 => Some(KeyboardKey::RightCommand),
+            0x3C => Some(KeyboardKey::RightShift),
+            0x3D => Some(KeyboardKey::RightOption),
+            0x3E => Some(KeyboardKey::RightControl),
+            0x3F => Some(KeyboardKey::Function),
+            0x40 => Some(KeyboardKey::F17),
+            0x48 => Some(KeyboardKey::VolumeUp),
+            0x49 => Some(KeyboardKey::VolumeDown),
+            0x4A => Some(KeyboardKey::Mute),
+            0x4F => Some(KeyboardKey::F18),
+            0x50 => Some(KeyboardKey::F19),
+            0x5A => Some(KeyboardKey::F20),
+            0x60 => Some(KeyboardKey::F5),
+            0x61 => Some(KeyboardKey::F6),
+            0x62 => Some(KeyboardKey::F7),
+            0x63 => Some(KeyboardKey::F3),
+            0x64 => Some(KeyboardKey::F8),
+            0x65 => Some(KeyboardKey::F9),
+            0x67 => Some(KeyboardKey::F11),
+            0x69 => Some(KeyboardKey::F13),
+            0x6A => Some(KeyboardKey::F16),
+            0x6B => Some(KeyboardKey::F14),
+            0x6D => Some(KeyboardKey::F10),
+            0x6E => Some(KeyboardKey::ContextualMenu),
+            0x6F => Some(KeyboardKey::F12),
+            0x71 => Some(KeyboardKey::F15),
+            0x72 => Some(KeyboardKey::Help),
+            0x73 => Some(KeyboardKey::Home),
+            0x74 => Some(KeyboardKey::PageUp),
+            0x75 => Some(KeyboardKey::ForwardDelete),
+            0x76 => Some(KeyboardKey::F4),
+            0x77 => Some(KeyboardKey::End),
+            0x78 => Some(KeyboardKey::F2),
+            0x79 => Some(KeyboardKey::PageDown),
+            0x7A => Some(KeyboardKey::F1),
+            0x7B => Some(KeyboardKey::LeftArrow),
+            0x7C => Some(KeyboardKey::RightArrow),
+            0x7D => Some(KeyboardKey::DownArrow),
+            0x7E => Some(KeyboardKey::UpArrow),
+            0x0A => Some(KeyboardKey::ISOSection),
+            0x5D => Some(KeyboardKey::JISYen),
+            0x5E => Some(KeyboardKey::JISUnderscore),
+            0x5F => Some(KeyboardKey::JISKeypadComma),
+            0x66 => Some(KeyboardKey::JISEisu),
+            0x68 => Some(KeyboardKey::JISKana),
+            _ => None, // Return None if the code doesn't match any key
+        }
     }
 }

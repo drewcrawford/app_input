@@ -20,7 +20,8 @@ private final class DebugWindow: NSWindow {
     MainActor.assumeIsolated {
         window = DebugWindow()
         window?.makeKeyAndOrderFront(nil)
-        window?.contentView = NSView()
+        
+        window?.contentView = NSView(frame: .init(origin: .zero, size: .init(width: 500, height: 500)))
         NSApplication.shared.run()
     }
 }

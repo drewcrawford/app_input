@@ -16,21 +16,76 @@ final class PlatformCoalescedKeyboard:
      **/
     Sendable
 {
-    init(notifyFunc: KeyNotifyFunc) {
+    nonisolated(unsafe) let monitor: Any?
+    nonisolated(unsafe) let context: UnsafeMutableRawPointer
+    
+    init(notifyFunc: KeyNotifyFunc, context: UnsafeMutableRawPointer) {
         MainActor.shared.dispatchMainThreadFromRustContextDetached {
             NSApplication.shared.setActivationPolicy(.regular)
         }
-        NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
-            notifyFunc()
+        self.context = context
+        self.monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
+            switch event.type {
+            case .keyDown:
+                notifyFunc(context, event.keyCode, true)
+            case .keyUp:
+                notifyFunc(context, event.keyCode, false)
+            case .flagsChanged:
+                func notifyModifier(event: NSEvent, flag: NSEvent.ModifierFlags) {
+                    if event.modifierFlags.contains(flag) {
+                        notifyFunc(context, event.keyCode, true)
+                    }
+                    else {
+                        notifyFunc(context, event.keyCode, false)
+                    }
+                }
+
+                switch event.keyCode {
+                case 0x3B: //control
+                    notifyModifier(event: event, flag: .control)
+                case 0x3E: //right control
+                    notifyModifier(event: event, flag: .control)
+                case 0x3A: //option
+                    notifyModifier(event: event, flag: .option)
+                case 0x3D://right option
+                    notifyModifier(event: event, flag: .option)
+                case 0x37://command
+                    notifyModifier(event: event, flag: .command)
+                case 0x36: //right command
+                    notifyModifier(event: event, flag: .command)
+                case 0x38: //shift
+                    notifyModifier(event: event, flag: .shift)
+                case 0x3C: //right shift
+                    notifyModifier(event: event, flag: .shift)
+                case 0x3F: //function
+                    notifyModifier(event: event, flag: .function)
+                case 0x39: //caps lock
+                    notifyModifier(event: event, flag: .capsLock)
+                    
+                
+                default:
+                    fatalError("\(event)")
+                }
+            default:
+                fatalError("Unknown event type \(event.type)")
+            }
+            
+            
             return event
+        }
+
+    }
+    deinit {
+        if let monitor {
+            NSEvent.removeMonitor(monitor)
         }
     }
 }
 
-public typealias KeyNotifyFunc = @convention(c) () -> ()
+public typealias KeyNotifyFunc = @convention(c) (UnsafeMutableRawPointer, UInt16, Bool) -> ()
 
-@_cdecl("PlatformCoalescedKeyboardNew") public func PlatformCoalescedKeyboardNew(keyNotify: KeyNotifyFunc) -> UnsafeMutableRawPointer {
-    let p = PlatformCoalescedKeyboard(notifyFunc: keyNotify)
+@_cdecl("PlatformCoalescedKeyboardNew") public func PlatformCoalescedKeyboardNew(keyNotify: KeyNotifyFunc, context: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer {
+    let p = PlatformCoalescedKeyboard(notifyFunc: keyNotify, context: context)
     return Unmanaged.passRetained(p).toOpaque()
 }
 
