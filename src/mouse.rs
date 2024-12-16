@@ -5,6 +5,7 @@ pub(crate) mod macos;
 pub(crate) use macos as sys;
 
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 /**
 Mouse's location in the window, in points.
@@ -24,6 +25,8 @@ impl MouseWindowLocation {
         MouseWindowLocation{pos_x, pos_y, window_width, window_height}
     }
 }
+
+
 
 /**
 Mouse's location.
@@ -48,12 +51,14 @@ impl MouseAbsoluteLocation {
 struct Shared {
     abs: std::sync::Mutex<Option<MouseAbsoluteLocation>>,
     window: std::sync::Mutex<Option<MouseWindowLocation>>,
+    buttons: [AtomicBool; 255],
 }
 impl Shared {
     fn new() -> Self {
         Shared{
             abs: std::sync::Mutex::new(None),
             window: std::sync::Mutex::new(None),
+            buttons: [const {AtomicBool::new(false)}; 255],
         }
     }
     fn set_absolute_location(&self, location: MouseAbsoluteLocation) {
@@ -63,6 +68,10 @@ impl Shared {
     fn set_window_location(&self, location: MouseWindowLocation) {
         logwise::debuginternal_sync!("Set mouse window location {location}",location=logwise::privacy::LogIt(&location));
         *self.window.lock().unwrap() = Some(location);
+    }
+    fn set_key_state(&self, key: u8, down: bool) {
+        logwise::debuginternal_sync!("Set mouse key {key} state {down}",key=key,down=down);
+        self.buttons[key as usize].store(down, std::sync::atomic::Ordering::Relaxed);
     }
 }
 

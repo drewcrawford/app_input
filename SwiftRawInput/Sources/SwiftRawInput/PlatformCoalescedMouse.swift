@@ -28,7 +28,7 @@ final class PlatformCoalescedMouse:
         
         let sendContext = Int(bitPattern: context)
         
-        self.monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseUp, .otherMouseUp, .rightMouseUp,.scrollWheel]) { event in
+        self.monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDown, .leftMouseUp, .otherMouseDown, .otherMouseUp, .rightMouseDown, .rightMouseUp,.scrollWheel]) { event in
             switch event.type {
             case .mouseMoved:
 
@@ -52,6 +52,19 @@ final class PlatformCoalescedMouse:
                     raw_input_mouse_move(context, rustCoords.x, rustCoords.y, nil, 0, 0, 0,0)
                     
                 }
+            case .leftMouseDown:
+                raw_input_mouse_button(context, 0, true)
+            case .leftMouseUp:
+                raw_input_mouse_button(context, 0, false)
+            case .rightMouseDown:
+                raw_input_mouse_button(context, 1, true)
+            case .rightMouseUp:
+                raw_input_mouse_button(context, 1, false)
+            case .otherMouseDown:
+                raw_input_mouse_button(context, UInt8(event.buttonNumber), true)
+            case .otherMouseUp:
+                raw_input_mouse_button(context, UInt8(event.buttonNumber), false)
+            
             default:
                 fatalError("\(event)")
             }

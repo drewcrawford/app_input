@@ -62,6 +62,7 @@ final class PlatformCoalescedKeyboard:
                     notifyModifier(event: event, flag: .function)
                 case 0x39: //caps lock
                     notifyModifier(event: event, flag: .capsLock)
+                
                     
                 
                 default:
