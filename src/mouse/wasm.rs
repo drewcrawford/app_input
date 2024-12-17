@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
-use web_sys::MouseEvent;
+use web_sys::{MouseEvent,WheelEvent};
 use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation};
 
 fn js_button_to_rust(button: i16) -> u8 {
@@ -17,6 +17,7 @@ pub(crate) struct PlatformCoalescedMouse {
     mouse_listener: JsValue,
     mousedown_listener: JsValue,
     mouseup_listener: JsValue,
+    wheel_listener: JsValue,
 }
 
 impl PlatformCoalescedMouse {
@@ -28,6 +29,7 @@ impl PlatformCoalescedMouse {
         let weak = Arc::downgrade(&shared);
         let weak_down = weak.clone();
         let weak_up = weak.clone();
+        let weak_wheel = weak.clone();
 
 
         // Mouse move callback
@@ -80,11 +82,33 @@ impl PlatformCoalescedMouse {
             mouseup_callback.as_ref().unchecked_ref(),
         ).expect("Can't add event listener");
 
+        let wheel_callback = Closure::wrap(Box::new(move |event: WheelEvent| {
+            let raw_x = event.delta_x();
+            let raw_y = event.delta_y();
+            let mode = event.delta_mode();
+            let (x,y) = match mode {
+                1 => (raw_x * 10.0, raw_y * 10.0),
+                2 => (raw_x * 100.0, raw_y * 100.0),
+                _ => (raw_x, raw_y),
+            };
+
+            if let Some(shared) = weak_wheel.upgrade() {
+                shared.add_scroll_delta(x as f64, y as f64);
+            }
+        }) as Box<dyn FnMut(WheelEvent)>);
+        document.add_event_listener_with_callback(
+            "wheel",
+            wheel_callback.as_ref().unchecked_ref(),
+        ).expect("Can't add event listener");
+
+
+
 
         Self {
             mouse_listener: mousemove_callback.into_js_value(),
             mousedown_listener: mousedown_callback.into_js_value(),
             mouseup_listener: mouseup_callback.into_js_value(),
+            wheel_listener: wheel_callback.into_js_value(),
         }
 
 
