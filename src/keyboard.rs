@@ -37,6 +37,8 @@ impl Shared {
     }
 
     fn set_key_state(&self, key: KeyboardKey, state: bool) {
+        logwise::debuginternal_sync!("Setting key {key} to {state}",key=logwise::privacy::LogIt(key), state=state);
+
         self.key_states[key as usize].store(state, std::sync::atomic::Ordering::Relaxed);
     }
 }

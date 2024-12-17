@@ -1,5 +1,5 @@
 #[repr(usize)]
-#[derive(Debug,Hash)]
+#[derive(Debug,Hash,Copy,Clone)]
 #[non_exhaustive]
 pub enum KeyboardKey {
     A,
@@ -122,6 +122,40 @@ pub enum KeyboardKey {
     JISKeypadComma,
     JISEisu,
     JISKana,
+    Pause,
+    ScrollLock,
+    PrintScreen,
+    InternationalBackslash,
+    F21,
+    F22,
+    F23,
+    Lang2,
+    Lang1,
+    IntlRo,
+    F24,
+    Convert,
+    NonConvert,
+    PreviousTrack,
+    NextTrack,
+    LaunchApp2,
+    Play,
+    Stop,
+    BrowserHome,
+    NumLock,
+    Insert,
+    ContextMenu,
+    Power,
+    Eject,
+    BrowserSearch,
+    BrowserFavorites,
+    BrowserRefresh,
+    BrowserStop,
+    BrowserForward,
+    BrowserBack,
+    LaunchApp1,
+    LaunchMail,
+    MediaSelect,
+
 }
 
 impl KeyboardKey {
@@ -167,6 +201,23 @@ impl KeyboardKey {
             KeyboardKey::DownArrow, KeyboardKey::UpArrow, KeyboardKey::ISOSection,
             KeyboardKey::JISYen, KeyboardKey::JISUnderscore,
             KeyboardKey::JISKeypadComma, KeyboardKey::JISEisu, KeyboardKey::JISKana,
+            KeyboardKey::Pause, KeyboardKey::ScrollLock, KeyboardKey::PrintScreen, KeyboardKey::InternationalBackslash,
+            KeyboardKey::F21, KeyboardKey::F22, KeyboardKey::F23,
+            KeyboardKey::Lang2, KeyboardKey::Lang1, KeyboardKey::IntlRo, KeyboardKey::F24,
+            KeyboardKey::Convert, KeyboardKey::NonConvert,
+            KeyboardKey::PreviousTrack, KeyboardKey::NextTrack,
+            KeyboardKey::LaunchApp2, KeyboardKey::Play,
+            KeyboardKey::Stop, KeyboardKey::BrowserHome,
+            KeyboardKey::NumLock, KeyboardKey::Insert,
+            KeyboardKey::ContextMenu, KeyboardKey::Power, KeyboardKey::Eject,
+            KeyboardKey::BrowserSearch, KeyboardKey::BrowserFavorites,
+            KeyboardKey::BrowserRefresh, KeyboardKey::BrowserStop,
+            KeyboardKey::BrowserForward, KeyboardKey::BrowserBack,
+            KeyboardKey::LaunchApp1, KeyboardKey::LaunchMail,
+            KeyboardKey::MediaSelect,
+
+
+
         ]
 
     }
