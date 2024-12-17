@@ -11,12 +11,19 @@ pub(crate) mod macos;
 #[cfg(target_arch = "wasm32")]
 pub(crate) mod wasm;
 
+#[cfg(target_os = "windows")]
+pub(crate) mod windows;
+
 
 #[cfg(target_os = "macos")]
 pub(crate) use macos as sys;
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) use wasm as sys;
+
+#[cfg(target_os = "windows")]
+pub(crate) use windows as sys;
+
 
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
