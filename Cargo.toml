@@ -17,10 +17,11 @@ swift-rs = "1.0.7"
 swift-rs = { version = "1.0.7", features = ["build"] }
 
 # wasm32
-[target.'cfg(target_arch="wasm32")'.dependencies]
+[target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.99"
+web-sys = { version = "0.3.76", features=["KeyboardEvent","Window","Document","MouseEvent"] }
 
-[target.'cfg(target_arch="wasm32")'.build-dependencies]
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 # used for main example in wasm32
 console_error_panic_hook = "0.1.7"
 

@@ -94,6 +94,12 @@ impl Shared {
     }
 }
 
+impl Drop for Shared {
+    fn drop(&mut self) {
+        panic!("why is this dropped?");
+    }
+}
+
 #[derive(Debug)]
 pub struct Mouse {
     shared: Arc<Shared>,

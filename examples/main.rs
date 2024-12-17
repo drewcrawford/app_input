@@ -9,10 +9,13 @@ fn test_board() {
     let k = Keyboard::coalesced();
     let m = Mouse::coalesced();
     debug_window_show();
-    std::thread::sleep(std::time::Duration::from_millis(10 * 1000));
-    assert!(!k.is_pressed(KeyboardKey::A));
-    println!("{:?}",m);
     debug_window_hide();
+
+    //on wasm32 this thread completes
+    #[cfg(target_arch="wasm32")] {
+        std::mem::forget(k);
+        std::mem::forget(m);
+    }
 }
 
 fn main() {
