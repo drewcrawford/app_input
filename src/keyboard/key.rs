@@ -129,9 +129,6 @@ pub enum KeyboardKey {
     F21,
     F22,
     F23,
-    Lang2,
-    Lang1,
-    IntlRo,
     F24,
     Convert,
     NonConvert,
@@ -155,6 +152,16 @@ pub enum KeyboardKey {
     LaunchApp1,
     LaunchMail,
     MediaSelect,
+    Again,
+    Props,
+    Undo,
+    Select,
+    Copy,
+    Open,
+    Paste,
+    Find,
+    Cut,
+    WakeUp,
 
 }
 
@@ -203,7 +210,7 @@ impl KeyboardKey {
             KeyboardKey::JISKeypadComma, KeyboardKey::JISEisu, KeyboardKey::JISKana,
             KeyboardKey::Pause, KeyboardKey::ScrollLock, KeyboardKey::PrintScreen, KeyboardKey::InternationalBackslash,
             KeyboardKey::F21, KeyboardKey::F22, KeyboardKey::F23,
-            KeyboardKey::Lang2, KeyboardKey::Lang1, KeyboardKey::IntlRo, KeyboardKey::F24,
+            KeyboardKey::F24,
             KeyboardKey::Convert, KeyboardKey::NonConvert,
             KeyboardKey::PreviousTrack, KeyboardKey::NextTrack,
             KeyboardKey::LaunchApp2, KeyboardKey::Play,
@@ -214,8 +221,10 @@ impl KeyboardKey {
             KeyboardKey::BrowserRefresh, KeyboardKey::BrowserStop,
             KeyboardKey::BrowserForward, KeyboardKey::BrowserBack,
             KeyboardKey::LaunchApp1, KeyboardKey::LaunchMail,
-            KeyboardKey::MediaSelect,
-
+            KeyboardKey::MediaSelect, KeyboardKey::Again, KeyboardKey::Props,
+            KeyboardKey::Undo, KeyboardKey::Select, KeyboardKey::Copy,
+            KeyboardKey::Open, KeyboardKey::Paste, KeyboardKey::Find,
+            KeyboardKey::Cut, KeyboardKey::WakeUp,
 
 
         ]
