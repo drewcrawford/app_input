@@ -16,6 +16,15 @@ swift-rs = "1.0.7"
 [target.'cfg(target_os = "macos")'.build-dependencies]
 swift-rs = { version = "1.0.7", features = ["build"] }
 
+# wasm32
+[target.'cfg(target_arch="wasm32")'.dependencies]
+wasm-bindgen = "0.2.99"
+
+[target.'cfg(target_arch="wasm32")'.build-dependencies]
+# used for main example in wasm32
+console_error_panic_hook = "0.1.7"
+
+
 
 [[example]]
 name = "main"
@@ -23,5 +32,3 @@ name = "main"
 runner = "wasm-server-runner"
 
 [dev-dependencies]
-# used for main example in wasm32
-console_error_panic_hook = "0.1.7"
