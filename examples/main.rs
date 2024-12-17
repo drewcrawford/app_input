@@ -4,6 +4,7 @@ use raw_input::keyboard::key::KeyboardKey;
 use raw_input::mouse::Mouse;
 
 fn test_board() {
+    std::panic::set_hook(Box::new(console_error_panic_hook::hook));
     let k = Keyboard::coalesced();
     let m = Mouse::coalesced();
     debug_window_show();

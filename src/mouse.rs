@@ -1,10 +1,16 @@
 #[cfg(target_os = "macos")]
 pub(crate) mod macos;
+#[cfg(target_arch = "wasm32")]
+pub(crate) mod wasm;
 
-use std::iter::Scan;
+
 #[cfg(target_os = "macos")]
 pub(crate) use macos as sys;
 
+#[cfg(target_arch = "wasm32")]
+pub(crate) use wasm as sys;
+
+use std::iter::Scan;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64};
 use atomic_float::AtomicF64;
