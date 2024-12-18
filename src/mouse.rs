@@ -47,7 +47,7 @@ Mouse's location.
 
 Origin at the upper left.
 */
-#[derive(Debug)]
+#[derive(Debug,Clone,Copy)]
 struct MouseAbsoluteLocation {
     abs_pos_x: f64,
     abs_pos_y: f64,

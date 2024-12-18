@@ -4,10 +4,11 @@ use windows::core::{w, PCWSTR};
 use windows::Win32::Devices::HumanInterfaceDevice::{HID_USAGE_GENERIC_KEYBOARD, HID_USAGE_PAGE_GENERIC};
 use windows::Win32::Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{COLOR_WINDOW, HBRUSH};
-use windows::Win32::UI::Input::{RegisterRawInputDevices, RAWINPUTDEVICE, RIDEV_NOLEGACY};
-use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, LoadCursorW, RegisterClassExW, RegisterClassW, ShowWindow, TranslateMessage, CW_USEDEFAULT, HMENU, IDC_ARROW, MSG, SW_SHOWNORMAL, WINDOW_EX_STYLE, WM_INPUT, WNDCLASSEXW, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW};
+use windows::Win32::UI::Input::{GetRawInputData, RegisterRawInputDevices, HRAWINPUT, MOUSE_MOVE_ABSOLUTE, MOUSE_VIRTUAL_DESKTOP, RAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER, RIDEV_NOLEGACY, RID_INPUT, RIM_TYPEMOUSE};
+use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetSystemMetrics, LoadCursorW, RegisterClassExW, RegisterClassW, ShowWindow, TranslateMessage, CW_USEDEFAULT, HMENU, IDC_ARROW, MSG, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SW_SHOWNORMAL, WINDOW_EX_STYLE, WM_INPUT, WNDCLASSEXW, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW};
 use crate::keyboard::Shared;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use crate::mouse::windows::window_proc;
 
 pub struct PlatformCoalescedKeyboard {
 
@@ -31,23 +32,7 @@ impl PlatformCoalescedKeyboard {
     }
 }
 
-/**
-Provide windows key events to raw_input.
 
-# Returns
-If we processed the message, returns LRESULT(0).  Otherwise returns non-zero.
-*/
-pub fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
-    match msg {
-        msg if msg == WM_INPUT => {
-            todo!()
-        }
-        _ => {
-            //didn't process the message.
-            LRESULT(1)
-        }
-    }
-}
 
 extern "system" fn debug_window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     println!("got msg hwnd {hwnd:?} msg {msg} w_param {w_param:?} l_param {l_param:?}");
