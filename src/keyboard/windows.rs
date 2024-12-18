@@ -5,7 +5,7 @@ use windows::Win32::Devices::HumanInterfaceDevice::{HID_USAGE_GENERIC_KEYBOARD, 
 use windows::Win32::Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{COLOR_WINDOW, HBRUSH};
 use windows::Win32::UI::Input::{RegisterRawInputDevices, RAWINPUTDEVICE, RIDEV_NOLEGACY};
-use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, LoadCursorW, RegisterClassExW, RegisterClassW, ShowWindow, TranslateMessage, CW_USEDEFAULT, HMENU, IDC_ARROW, MSG, SW_SHOWNORMAL, WINDOW_EX_STYLE, WNDCLASSEXW, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW};
+use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, LoadCursorW, RegisterClassExW, RegisterClassW, ShowWindow, TranslateMessage, CW_USEDEFAULT, HMENU, IDC_ARROW, MSG, SW_SHOWNORMAL, WINDOW_EX_STYLE, WM_INPUT, WNDCLASSEXW, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW};
 use crate::keyboard::Shared;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 
@@ -31,9 +31,32 @@ impl PlatformCoalescedKeyboard {
     }
 }
 
-extern "system" fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
+/**
+Provide windows key events to raw_input.
+
+# Returns
+If we processed the message, returns LRESULT(0).  Otherwise returns non-zero.
+*/
+pub fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
+    match msg {
+        msg if msg == WM_INPUT => {
+            todo!()
+        }
+        _ => {
+            //didn't process the message.
+            LRESULT(1)
+        }
+    }
+}
+
+extern "system" fn debug_window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     println!("got msg hwnd {hwnd:?} msg {msg} w_param {w_param:?} l_param {l_param:?}");
-    unsafe{DefWindowProcW(hwnd,msg,w_param, l_param)}
+    if window_proc(hwnd, msg, w_param, l_param) == LRESULT(0) {
+        return LRESULT(0);
+    }
+    else {
+        unsafe{DefWindowProcW(hwnd,msg,w_param, l_param)}
+    }
 }
 
 pub fn debug_window_show() {
@@ -44,7 +67,7 @@ pub fn debug_window_show() {
     let window_class = WNDCLASSEXW {
         cbSize: std::mem::size_of::<WNDCLASSEXW>() as u32,
         style: Default::default(),
-        lpfnWndProc: Some(window_proc),
+        lpfnWndProc: Some(debug_window_proc),
         cbClsExtra: 0,
         cbWndExtra: 0,
         hInstance: instance.into(),
