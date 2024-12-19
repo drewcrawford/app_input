@@ -4,20 +4,24 @@ use memmap2::MmapMut;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle, WEnum};
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
-use wayland_client::protocol::{wl_compositor, wl_registry, wl_shm};
+use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_shm};
 use wayland_client::protocol::wl_buffer::WlBuffer;
 use wayland_client::protocol::wl_compositor::WlCompositor;
 use wayland_client::protocol::wl_keyboard::{KeyState, WlKeyboard};
+use wayland_client::protocol::wl_output::{Mode, WlOutput};
 use wayland_client::protocol::wl_pointer::WlPointer;
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_shm::{Format, WlShm};
 use wayland_client::protocol::wl_shm_pool::WlShmPool;
 use wayland_client::protocol::wl_surface::WlSurface;
 use wayland_protocols::xdg::shell::client::xdg_surface::XdgSurface;
+use wayland_protocols::xdg::shell::client::xdg_toplevel;
 use wayland_protocols::xdg::shell::client::xdg_toplevel::XdgToplevel;
 use wayland_protocols::xdg::shell::client::xdg_wm_base::{Event, XdgWmBase};
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::{Shared};
+use crate::mouse::linux::motion_event;
+use crate::mouse::sys::xdg_toplevel_configure_event;
 
 struct KeyboardState {
     shareds: Vec<Weak<Shared>>
@@ -162,8 +166,16 @@ impl wayland_client::Dispatch<wl_registry::WlRegistry, GlobalListContents> for A
 }
 
 impl Dispatch<XdgToplevel, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &XdgToplevel, event: <XdgToplevel as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("got XdgToplevel event {:?}",event);
+    fn event(_state: &mut Self, proxy: &XdgToplevel, event: <XdgToplevel as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+        match event {
+            xdg_toplevel::Event::Configure {  width, height, states: _ } => {
+                xdg_toplevel_configure_event(width, height);
+            }
+            _ => {
+                println!("got XdgToplevel event {:?}",event);
+
+            }
+        }
     }
 }
 
@@ -172,10 +184,10 @@ impl Dispatch<XdgToplevel, ()> for AppData {
 impl Dispatch<WlPointer, ()> for AppData {
     fn event(_state: &mut Self, _proxy: &WlPointer, event: <WlPointer as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
         match event {
-            // wayland_client::protocol::wl_pointer::Event::Motion {time,surface_x,surface_y} => {
-            //     motion_event(time, surface_x, surface_y);
-            //
-            // }
+            wayland_client::protocol::wl_pointer::Event::Motion {time,surface_x,surface_y} => {
+                motion_event(time, surface_x, surface_y);
+
+            }
             _ => println!("got WlPointer event {:?}",event)
         }
     }
@@ -229,6 +241,8 @@ pub fn debug_window_show() {
 
 
     let surface = compositor.create_surface(&qh, ());
+
+
     // Create a toplevel surface
     let xdg_surface = xdg_wm_base.get_xdg_surface(&surface, &qh, ());
     xdg_surface.get_toplevel(&qh, ());
