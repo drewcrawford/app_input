@@ -1,13 +1,11 @@
 use std::ffi::c_void;
 use std::sync::Arc;
 use windows::core::{w, PCWSTR};
-use windows::Win32::Devices::HumanInterfaceDevice::{HID_USAGE_GENERIC_KEYBOARD, HID_USAGE_PAGE_GENERIC};
-use windows::Win32::Foundation::{GetLastError, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM, HINSTANCE, GetLastError};
 use windows::Win32::Graphics::Gdi::{COLOR_WINDOW, HBRUSH};
-use windows::Win32::UI::Input::{GetRawInputData, RegisterRawInputDevices, HRAWINPUT, MOUSE_MOVE_ABSOLUTE, MOUSE_VIRTUAL_DESKTOP, RAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER, RIDEV_NOLEGACY, RID_INPUT, RIM_TYPEMOUSE};
-use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetSystemMetrics, LoadCursorW, RegisterClassExW, RegisterClassW, ShowWindow, TranslateMessage, CW_USEDEFAULT, HMENU, IDC_ARROW, MSG, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SW_SHOWNORMAL, WINDOW_EX_STYLE, WM_INPUT, WNDCLASSEXW, WS_OVERLAPPED, WS_OVERLAPPEDWINDOW};
-use crate::keyboard::Shared;
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, LoadCursorW, RegisterClassExW, ShowWindow, TranslateMessage, CW_USEDEFAULT, HMENU, IDC_ARROW, MSG, SW_SHOWNORMAL, WINDOW_EX_STYLE, WNDCLASSEXW, WS_OVERLAPPEDWINDOW};
+use crate::keyboard::Shared;
 use crate::mouse::windows::window_proc;
 
 pub struct PlatformCoalescedKeyboard {
@@ -15,16 +13,7 @@ pub struct PlatformCoalescedKeyboard {
 }
 impl PlatformCoalescedKeyboard {
     pub fn new(shared: &Arc<Shared>) -> Self {
-        let device = RAWINPUTDEVICE {
-            usUsagePage: HID_USAGE_PAGE_GENERIC,
-            usUsage: HID_USAGE_GENERIC_KEYBOARD,
-            //todo: the internet suggests that this may disable some windows behaviors
-            dwFlags: RIDEV_NOLEGACY,
-            // A handle to the target window. If NULL, raw input events follow the keyboard focus to ensure only the focused application window receives the events.
-            hwndTarget: HWND(std::ptr::null_mut()),
-        };
-        unsafe{RegisterRawInputDevices(&[device], std::mem::size_of_val(&device) as u32)}
-            .expect("failed to register raw input devices");
+
         PlatformCoalescedKeyboard {
 
         }
