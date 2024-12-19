@@ -14,6 +14,8 @@ pub(crate) mod wasm;
 #[cfg(target_os = "windows")]
 pub(crate) mod windows;
 
+#[cfg(target_os = "linux")]
+pub(crate) mod linux;
 
 #[cfg(target_os = "macos")]
 pub(crate) use macos as sys;
@@ -23,6 +25,11 @@ pub(crate) use wasm as sys;
 
 #[cfg(target_os = "windows")]
 pub(crate) use windows as sys;
+
+#[cfg(target_os = "linux")]
+pub(crate) use linux as sys;
+
+
 
 
 use crate::keyboard::key::KeyboardKey;
