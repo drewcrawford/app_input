@@ -61,6 +61,36 @@ pub fn xdg_toplevel_configure_event(width: i32, height: i32) {
     lock.send_events_if_needed();
 }
 
+pub fn button_event(time: u32, button: u32, state: u32) {
+    let down = if state == 0 {
+        false
+    }
+    else {
+        true
+    };
+    //see https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
+    let btn_code = match button {
+        0x110 => 0, //BTN_LEFT
+        0x111 => 1, //BTN_RIGHT
+        0x112 => 2, //BTN_MIDDLE
+        0x113 => 3, //BTN_SIDE
+        0x114 => 4,//BTN_EXTRa
+        0x115 => 5, //BTN_FORWARD
+        0x116 => 6, //BTN_BACK
+        0x117 => 7, //BTN_TASK
+        0x118 => 8,
+        0x119 => 9,
+        _ => {
+            println!("Unknown button code {:?}", button);
+            return;
+        }
+        
+    };
+    MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
+        shared.set_key_state(btn_code, down);
+    })
+}
+
 
 static MOUSE_STATE: OnceLock<Mutex<MouseState>> = OnceLock::new();
 

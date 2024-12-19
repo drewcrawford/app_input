@@ -21,7 +21,7 @@ use wayland_protocols::xdg::shell::client::xdg_wm_base::{Event, XdgWmBase};
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::{Shared};
 use crate::mouse::linux::motion_event;
-use crate::mouse::sys::xdg_toplevel_configure_event;
+use crate::mouse::sys::{button_event, xdg_toplevel_configure_event};
 
 struct KeyboardState {
     shareds: Vec<Weak<Shared>>
@@ -187,6 +187,9 @@ impl Dispatch<WlPointer, ()> for AppData {
             wayland_client::protocol::wl_pointer::Event::Motion {time,surface_x,surface_y} => {
                 motion_event(time, surface_x, surface_y);
 
+            }
+            wayland_client::protocol::wl_pointer::Event::Button {serial: _, time, button, state} => {
+                button_event(time, button, state.into())
             }
             _ => println!("got WlPointer event {:?}",event)
         }
