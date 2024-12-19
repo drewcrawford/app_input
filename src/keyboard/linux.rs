@@ -1,14 +1,16 @@
 use std::fs::File;
 use std::os::fd::AsFd;
 use memmap2::MmapMut;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_client::globals::{registry_queue_init, GlobalList, GlobalListContents};
-use wayland_client::protocol::{wl_compositor, wl_registry, wl_shm};
+use wayland_client::protocol::{wl_compositor, wl_pointer, wl_registry, wl_shm};
+use wayland_client::protocol::__interfaces::wl_keyboard_interface;
 use wayland_client::protocol::wl_buffer::WlBuffer;
 use wayland_client::protocol::wl_compositor::WlCompositor;
-use wayland_client::protocol::wl_registry::Request::Bind;
-use wayland_client::protocol::wl_registry::WlRegistry;
+use wayland_client::protocol::wl_keyboard::WlKeyboard;
+use wayland_client::protocol::wl_pointer::WlPointer;
+use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_shm::{Format, WlShm};
 use wayland_client::protocol::wl_shm_pool::WlShmPool;
 use wayland_client::protocol::wl_surface::WlSurface;
@@ -17,13 +19,37 @@ use wayland_protocols::xdg::shell::client::xdg_toplevel::XdgToplevel;
 use wayland_protocols::xdg::shell::client::xdg_wm_base::{Event, XdgWmBase};
 use crate::keyboard::Shared;
 
+struct KeyboardState {
+    shareds: Vec<Weak<Shared>>
+}
+impl Default for KeyboardState {
+    fn default() -> Self {
+        KeyboardState {
+            shareds: Vec::new()
+        }
+    }
+}
+impl KeyboardState {
+    fn apply_all<F: Fn(&Shared) -> ()>(&mut self, f: F) {
+        self.shareds.retain(|shared| {
+            if let Some(shared) = shared.upgrade() {
+                f(&shared);
+                true
+            } else {
+                false
+            }
+        })
+    }
+}
+static KEYBOARD_STATE: OnceLock<Mutex<KeyboardState>> = OnceLock::new();
+
 pub(super) struct PlatformCoalescedKeyboard {
 
 }
 
 impl PlatformCoalescedKeyboard {
     pub fn new(shared: &Arc<Shared>) -> Self {
-        //todo!()
+        KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().shareds.push(Arc::downgrade(shared));
         PlatformCoalescedKeyboard {
 
         }
@@ -113,6 +139,12 @@ impl Dispatch<XdgSurface, ()> for AppData {
     }
 }
 
+impl Dispatch<WlSeat, ()> for AppData {
+    fn event(state: &mut Self, proxy: &WlSeat, event: <WlSeat as Proxy>::Event, data: &(), conn: &Connection, qhandle: &QueueHandle<Self>) {
+        println!("got WlSeat event {:?}",event);
+    }
+}
+
 // You need to provide a Dispatch<WlRegistry, GlobalListContents> impl for your app
 impl wayland_client::Dispatch<wl_registry::WlRegistry, GlobalListContents> for AppData {
     fn event(
@@ -132,6 +164,31 @@ impl wayland_client::Dispatch<wl_registry::WlRegistry, GlobalListContents> for A
 impl Dispatch<XdgToplevel, ()> for AppData {
     fn event(state: &mut Self, proxy: &XdgToplevel, event: <XdgToplevel as Proxy>::Event, data: &(), conn: &Connection, qhandle: &QueueHandle<Self>) {
         println!("got XdgToplevel event {:?}",event);
+    }
+}
+
+
+
+impl Dispatch<WlPointer, ()> for AppData {
+    fn event(state: &mut Self, proxy: &WlPointer, event: <WlPointer as Proxy>::Event, data: &(), conn: &Connection, qhandle: &QueueHandle<Self>) {
+        match event {
+            // wayland_client::protocol::wl_pointer::Event::Motion {time,surface_x,surface_y} => {
+            //     motion_event(time, surface_x, surface_y);
+            //
+            // }
+            _ => println!("got WlPointer event {:?}",event)
+        }
+    }
+}
+
+impl Dispatch<WlKeyboard, ()> for AppData {
+    fn event(state: &mut Self, proxy: &WlKeyboard, event: <WlKeyboard as Proxy>::Event, data: &(), conn: &Connection, qhandle: &QueueHandle<Self>) {
+        match event {
+            wayland_client::protocol::wl_keyboard::Event::Key {serial, time, key, state} => {
+                println!("got key event {:?} {:?} {:?}",serial,time,key);
+            }
+            _ => println!("got WlKeyboard event {:?}",event)
+        }
     }
 }
 
@@ -170,6 +227,11 @@ pub fn debug_window_show() {
     );
     surface.attach(Some(&buffer), 0, 0);
     surface.commit();
+
+    let seat: WlSeat = globals.bind(&qh, 6..=6, ()).expect("Can't bind seat");
+    let pointer = seat.get_pointer(&qh, ());
+    let keyboard = seat.get_keyboard(&qh, ());
+
 
     println!("Window should be displayed. Running event loop...");
 
