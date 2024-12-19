@@ -26,7 +26,7 @@ Mouse's location in the window, in points.
 
 Origin at the upper-left.
 */
-#[derive(Debug)]
+#[derive(Debug,Clone,Copy)]
 struct MouseWindowLocation {
     pos_x: f64,
     pos_y: f64,
