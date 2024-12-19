@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, OnceLock, Weak};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1, XBUTTON2};
-use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation, Shared};
+use crate::mouse::{MouseWindowLocation, Shared};
 
 fn get_x_lparam(lparam: LPARAM) -> i16 {
     ((lparam.0 as usize) & 0xFFFF) as u16 as i16
@@ -70,7 +70,6 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
             let mut point = MaybeUninit::uninit();
             unsafe{ClientToScreen(hwnd, point.as_mut_ptr())}.expect("failed to get client to screen");
             let point = unsafe{point.assume_init()};
-            let abs_mouse = MouseAbsoluteLocation::new((point.x + x as i32) as f64, (point.y + y as i32) as f64);
 
             let mut rect = MaybeUninit::uninit();
             unsafe{GetClientRect(hwnd,rect.as_mut_ptr())}.expect("failed to get client rect");
@@ -80,7 +79,6 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
 
             apply_all(|shared| {
                 shared.set_window_location(rel_mouse);
-                shared.set_absolute_location(abs_mouse);
             });
             LRESULT(0)
         }

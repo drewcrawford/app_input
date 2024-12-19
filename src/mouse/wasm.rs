@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 use web_sys::{MouseEvent,WheelEvent};
-use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation};
+use crate::mouse::{MouseWindowLocation};
 
 fn js_button_to_rust(button: i16) -> u8 {
     match button {
@@ -35,7 +35,6 @@ impl PlatformCoalescedMouse {
         // Mouse move callback
         let mousemove_callback = Closure::wrap(Box::new(move |event: MouseEvent| {
             if let Some(shared) = weak.upgrade() {
-                shared.set_absolute_location(MouseAbsoluteLocation::new(event.client_x() as f64, event.client_y() as f64));
                 let width = window
                     .inner_width()
                     .expect("failed to get width")
