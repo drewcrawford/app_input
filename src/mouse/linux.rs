@@ -8,6 +8,8 @@ pub(super) struct PlatformCoalescedMouse {
 
 impl PlatformCoalescedMouse {
     pub fn new(shared: &Arc<Shared>) -> Self {
-        todo!()
+        PlatformCoalescedMouse {
+
+        }
     }
 }
