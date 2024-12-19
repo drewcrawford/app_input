@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
-use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP};
+use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1, XBUTTON2};
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
 use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation, Shared};
 
@@ -14,6 +14,10 @@ fn get_x_lparam(lparam: LPARAM) -> i16 {
 
 fn get_y_lparam(lparam: LPARAM) -> i16 {
     (((lparam.0 as usize) & 0xFFFF_0000) >> 16) as u16 as i16
+}
+
+pub fn get_xbutton_wparam(wparam: WPARAM) -> u16 {
+    ((wparam.0 & 0xFFFF_0000) >> 16) as u16
 }
 
 
@@ -112,6 +116,42 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
         msg if msg == WM_MBUTTONUP => {
             apply_all(|shared| {
                 shared.set_key_state(2, false);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_XBUTTONDOWN => {
+            let xbutton = get_xbutton_wparam(w_param);
+            let key = match xbutton {
+                x if x == XBUTTON1 => {
+                    3
+                }
+                x if x == XBUTTON2 => {
+                    4
+                }
+                _ => {
+                    unimplemented!("Unknown xbutton {:?}",xbutton)
+                }
+            };
+            apply_all(|shared| {
+                shared.set_key_state(key, true);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_XBUTTONUP => {
+            let xbutton = get_xbutton_wparam(w_param);
+            let key = match xbutton {
+                x if x == XBUTTON1 => {
+                    3
+                }
+                x if x == XBUTTON2 => {
+                    4
+                }
+                _ => {
+                    unimplemented!("Unknown xbutton {:?}",xbutton)
+                }
+            };
+            apply_all(|shared| {
+                shared.set_key_state(key, false);
             });
             LRESULT(0)
         }
