@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
-use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1, XBUTTON2};
+use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1, XBUTTON2};
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
 use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation, Shared};
 
@@ -16,8 +16,12 @@ fn get_y_lparam(lparam: LPARAM) -> i16 {
     (((lparam.0 as usize) & 0xFFFF_0000) >> 16) as u16 as i16
 }
 
-pub fn get_xbutton_wparam(wparam: WPARAM) -> u16 {
+fn get_xbutton_wparam(wparam: WPARAM) -> u16 {
     ((wparam.0 & 0xFFFF_0000) >> 16) as u16
+}
+
+fn get_wheel_delta_wparam(wparam: WPARAM) -> i16 {
+    ((wparam.0 & 0xFFFF_0000) >> 16) as u16 as i16
 }
 
 
@@ -152,6 +156,22 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
             };
             apply_all(|shared| {
                 shared.set_key_state(key, false);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_MOUSEWHEEL => {
+            //todo: should this be scaled in some way?
+            let delta = get_wheel_delta_wparam(w_param);
+            apply_all(|shared| {
+                shared.add_scroll_delta(0.0, delta as f64);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_MOUSEHWHEEL => {
+            //todo: should this be scaled in some way?
+            let delta = get_wheel_delta_wparam(w_param);
+            apply_all(|shared| {
+                shared.add_scroll_delta(delta as f64, 0.0);
             });
             LRESULT(0)
         }
