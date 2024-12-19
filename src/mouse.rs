@@ -94,9 +94,28 @@ pub struct Mouse {
 }
 
 impl Mouse {
+    /**
+    Returns an object that coalesces input from all mice on the system.
+*/
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
         let coalesced = sys::PlatformCoalescedMouse::new(&shared);
         Mouse{shared, sys: coalesced}
+    }
+
+    /**
+    Returns the [MouseWindowLocation]
+
+    # Platform specifics
+
+    * macOS and wasm require no special considerations.
+    * On windows, you must call [crate::window_proc] from your window.
+    * * On Linux,you must call from appropriate wayland events:
+        * [crate::mouse::linux::motion_event],
+        * [crate::mouse::linux::button_event]
+        * [crate::mouse::linux::xdg_toplevel_configure_event]
+*/
+    pub fn window_pos(&self) -> Option<MouseWindowLocation> {
+        todo!()
     }
 }

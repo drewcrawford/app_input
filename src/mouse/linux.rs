@@ -47,6 +47,11 @@ impl MouseState {
     }
 }
 
+/**
+Call this to handle [wayland_client::protocol::wl_pointer::Event::Motion].
+
+Call this from your wayland dispatch queue.
+*/
 pub fn motion_event(time: u32, surface_x: f64, surface_y: f64) {
     let mut lock = MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap();
     lock.recent_x_pos = Some(surface_x);
@@ -54,6 +59,11 @@ pub fn motion_event(time: u32, surface_x: f64, surface_y: f64) {
     lock.send_events_if_needed();
 }
 
+/**
+Call this to handle [wayland_protocols::xdg::shell::client::xdg_toplevel::Event::Configure].
+
+Call this from your wayland dispatch queue.
+*/
 pub fn xdg_toplevel_configure_event(width: i32, height: i32) {
     let mut lock = MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap();
     lock.recent_window_width = Some(width);
@@ -61,6 +71,11 @@ pub fn xdg_toplevel_configure_event(width: i32, height: i32) {
     lock.send_events_if_needed();
 }
 
+/**
+Call this to handle wayland_client::protocol::wl_pointer::Event::Button.
+
+Call this from your wayland dispatch queue.
+*/
 pub fn button_event(time: u32, button: u32, state: u32) {
     let down = if state == 0 {
         false

@@ -2,7 +2,9 @@ use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
 
-
+/**
+keys on the keyboard
+*/
 pub mod key;
 
 #[cfg(target_os = "macos")]
@@ -77,6 +79,16 @@ impl Keyboard {
         }
     }
 
+    /**
+    Determines if the key provided is pressed.
+
+    # Platform specifics
+
+    * macOS and wasm require no special considerations.
+    * On windows, you must call [crate::window_proc] from your window.
+    * On Linux,you must call [crate::linux::wl_keyboard_event] from your Wayland dispatch queue.
+
+    */
     pub fn is_pressed(&self, key: KeyboardKey) -> bool {
         todo!()
     }

@@ -196,30 +196,26 @@ impl Dispatch<WlPointer, ()> for AppData {
     }
 }
 
+/**
+Call this from [WlKeyboard] dispatch for [wayland_client::protocol::wl_keyboard::Event::Key] event.
+*/
+pub fn wl_keyboard_event(serial: u32, time: u32, key: u32, state: u32) {
+    if let Some(key) = KeyboardKey::from_vk(key) {
+        let down = state == 1;
+        KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
+            shared.set_key_state(key, down)
+        })
+    }
+    else {
+        println!("Unknown key {key}");
+    }
+}
+
 impl Dispatch<WlKeyboard, ()> for AppData {
     fn event(_state: &mut Self, _proxy: &WlKeyboard, event: <WlKeyboard as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
         match event {
-            wayland_client::protocol::wl_keyboard::Event::Key {serial: _, time: _, key, state} => {
-                if let Some(key) = KeyboardKey::from_vk(key) {
-                    let down = match state {
-                        WEnum::Value(KeyState::Pressed) => {
-                            true
-                        }
-                        WEnum::Value(KeyState::Released) => {
-                            false
-                        }
-                        _ => {
-                            println!("Unknown key state {:?}", state);
-                            false
-                        }
-                    };
-                    KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-                        shared.set_key_state(key, down)
-                    })
-                }
-                else {
-                    println!("Unknown key {key}");
-                }
+            wayland_client::protocol::wl_keyboard::Event::Key {serial, time, key, state} => {
+                wl_keyboard_event(serial, time, key, state);
             }
             _ => println!("got WlKeyboard event {:?}",event)
         }

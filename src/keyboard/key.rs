@@ -1,6 +1,9 @@
 #[repr(usize)]
 #[derive(Debug,Hash,Copy,Clone)]
 #[non_exhaustive]
+/**
+A key on the keyboard.  Maps to an OS scancode.
+*/
 pub enum KeyboardKey {
     A,
     S,
@@ -166,6 +169,9 @@ pub enum KeyboardKey {
 }
 
 impl KeyboardKey {
+    /**
+    Returns all keys supported by the library.
+*/
     pub fn all_keys() -> Vec<KeyboardKey> {
         vec![
             KeyboardKey::A, KeyboardKey::S, KeyboardKey::D, KeyboardKey::F,
