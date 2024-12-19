@@ -16,9 +16,8 @@ pub(crate) use wasm as sys;
 #[cfg(target_os = "windows")]
 pub(crate) use windows as sys;
 
-use std::iter::Scan;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::sync::atomic::{AtomicBool};
 use atomic_float::AtomicF64;
 
 /**
