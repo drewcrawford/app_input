@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
-use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_MOUSEMOVE};
+use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_RBUTTONDOWN, WM_RBUTTONUP};
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
 use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation, Shared};
 
@@ -38,6 +38,18 @@ impl Default for MouseState {
     }
 }
 
+fn apply_all<F: Fn(&Shared)>(f: F) {
+    MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().shareds.retain(|shared |{
+        if let Some(shared) = shared.upgrade() {
+            f(&shared);
+            true
+        }
+        else {
+            false
+        }
+    })
+}
+
 static MOUSE_STATE: OnceLock<Mutex<MouseState>> = OnceLock::new();
 /**
 Provide windows key events to raw_input.
@@ -61,19 +73,49 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
             let rect = unsafe{rect.assume_init()};
             let rel_mouse = MouseWindowLocation::new(x as f64, y as f64, rect.right as f64, rect.bottom as f64 );
 
-            //take lock
-            MOUSE_STATE.get_or_init(Mutex::default).lock().expect("can't lock").shareds.retain(|shared |{
-               if let Some(shared) = shared.upgrade() {
-                   shared.set_absolute_location(abs_mouse);
-                   shared.set_window_location(rel_mouse);
-                   true
-               }
-                else {
-                    false
-                }
+            apply_all(|shared| {
+                shared.set_window_location(rel_mouse);
+                shared.set_absolute_location(abs_mouse);
             });
             LRESULT(0)
         }
+        msg if msg == WM_LBUTTONDOWN => {
+            apply_all(|shared| {
+                shared.set_key_state(0, true);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_LBUTTONUP => {
+            apply_all(|shared| {
+                shared.set_key_state(0, false);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_RBUTTONDOWN => {
+            apply_all(|shared| {
+                shared.set_key_state(1, true);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_RBUTTONUP => {
+            apply_all(|shared| {
+                shared.set_key_state(1, false);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_MBUTTONDOWN => {
+            apply_all(|shared| {
+                shared.set_key_state(2, true);
+            });
+            LRESULT(0)
+        }
+        msg if msg == WM_MBUTTONUP => {
+            apply_all(|shared| {
+                shared.set_key_state(2, false);
+            });
+            LRESULT(0)
+        }
+
         _ => LRESULT(1)
     }
 
