@@ -71,10 +71,6 @@ impl Shared {
 pub struct Keyboard {
     shared: Arc<Shared>,
     _platform_coalesced_keyboard: PlatformCoalescedKeyboard,
-    //mark this type as not-send-or-sync, as some platforms may not support this
-    _not_send_sync: PhantomData<*const ()>,
-    //why not, unpin as well
-    _not_unpin: PhantomPinned,
 }
 
 impl Keyboard {
@@ -87,8 +83,6 @@ impl Keyboard {
         Self {
             shared,
             _platform_coalesced_keyboard,
-            _not_send_sync: PhantomData,
-            _not_unpin: PhantomPinned,
         }
     }
 
@@ -130,5 +124,23 @@ impl Default for Keyboard {
     */
     fn default() -> Self {
         Self::coalesced()
+    }
+}
+
+#[cfg(test)] mod test {
+    use crate::keyboard::Keyboard;
+
+    #[test] fn test_send_sync() {
+        //I think basically the platform keyboard type operates as a kind of lifetime marker
+        //(the main function is drop).  Accordingly it shouldn't be too bad to expect platforms to
+        //implement send if necessary.
+        fn assert_send<T: Send>() {}
+        fn assert_sync<T: Sync>() {}
+
+        fn assert_unpin<T: Unpin>() {}
+
+        assert_send::<Keyboard>();
+        assert_sync::<Keyboard>();
+        assert_unpin::<Keyboard>();
     }
 }

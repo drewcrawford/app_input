@@ -106,10 +106,6 @@ impl Shared {
 pub struct Mouse {
     shared: Arc<Shared>,
     sys: sys::PlatformCoalescedMouse,
-    //mark this type as not-send-or-sync, as some platforms may not support this
-    _not_send_sync: PhantomData<*const ()>,
-    //why not, unpin as well
-    _not_unpin: PhantomPinned,
 }
 
 impl Mouse {
@@ -119,7 +115,7 @@ impl Mouse {
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
         let coalesced = sys::PlatformCoalescedMouse::new(&shared);
-        Mouse{shared, sys: coalesced, _not_send_sync: PhantomData, _not_unpin: PhantomPinned}
+        Mouse{shared, sys: coalesced}
     }
 
     /**
@@ -175,5 +171,23 @@ impl Default for Mouse {
     ///The coalesced mouse.
     fn default() -> Self {
         Mouse::coalesced()
+    }
+}
+
+#[cfg(test)] mod test {
+    use crate::mouse::Mouse;
+
+    #[test] fn test_send_sync() {
+        //I think basically the platform keyboard type operates as a kind of lifetime marker
+        //(the main function is drop).  Accordingly it shouldn't be too bad to expect platforms to
+        //implement send if necessary.
+        fn assert_send<T: Send>() {}
+        fn assert_sync<T: Sync>() {}
+
+        fn assert_unpin<T: Unpin>() {}
+
+        assert_send::<Mouse>();
+        assert_sync::<Mouse>();
+        assert_unpin::<Mouse>();
     }
 }
