@@ -1,7 +1,10 @@
+use std::ptr::NonNull;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 use web_sys::{MouseEvent,WheelEvent};
 use crate::mouse::{MouseWindowLocation};
+use crate::keyboard::wasm::ARBITRARY_WINDOW_PTR;
+use crate::Window;
 
 fn js_button_to_rust(button: i16) -> u8 {
     match button {
@@ -46,9 +49,9 @@ impl PlatformCoalescedMouse {
                     .expect("failed to get height")
                     .as_f64()
                     .unwrap_or(0.0);
+                let window = Some(Window(NonNull::new(ARBITRARY_WINDOW_PTR).unwrap()));
 
-
-                shared.set_window_location(MouseWindowLocation::new(event.page_x() as f64, event.page_y() as f64, width, height));
+                shared.set_window_location(MouseWindowLocation::new(event.page_x() as f64, event.page_y() as f64, width, height, window));
             }
         }) as Box<dyn FnMut(MouseEvent)>);
 
@@ -62,7 +65,7 @@ impl PlatformCoalescedMouse {
         let mousedown_callback = Closure::wrap(Box::new(move |event: MouseEvent| {
             if let Some(shared) = weak_down.upgrade() {
 
-                shared.set_key_state(js_button_to_rust(event.button()), true);
+                shared.set_key_state(js_button_to_rust(event.button()), true, ARBITRARY_WINDOW_PTR);
             }
         }) as Box<dyn FnMut(MouseEvent)>);
         document.add_event_listener_with_callback(
@@ -72,7 +75,7 @@ impl PlatformCoalescedMouse {
 
         let mouseup_callback = Closure::wrap(Box::new(move |event: MouseEvent| {
             if let Some(shared) = weak_up.upgrade() {
-                shared.set_key_state(js_button_to_rust(event.button()), false);
+                shared.set_key_state(js_button_to_rust(event.button()), false, ARBITRARY_WINDOW_PTR);
             }
 
         }) as Box<dyn FnMut(MouseEvent)>);
@@ -92,7 +95,7 @@ impl PlatformCoalescedMouse {
             };
 
             if let Some(shared) = weak_wheel.upgrade() {
-                shared.add_scroll_delta(x as f64, y as f64);
+                shared.add_scroll_delta(x as f64, y as f64, ARBITRARY_WINDOW_PTR);
             }
         }) as Box<dyn FnMut(WheelEvent)>);
         document.add_event_listener_with_callback(

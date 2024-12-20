@@ -46,7 +46,7 @@ Provides information about the window an event was delivered to.
 
 # Platform specifics
 * on macOS, this is the pointer of an NSWindow.  No memory management is performed, so dereferencing the window may be invalid.
-
+* on wasm32, we attach to the global DOM window, and we choose an opaque value arbitrarily for this type.
 */
 #[derive(Debug,Hash,Eq,PartialEq,Copy,Clone)]
 pub struct Window(pub std::ptr::NonNull<std::ffi::c_void>);

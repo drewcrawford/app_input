@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use std::sync::Arc;
 use crate::keyboard::{Keyboard, Shared};
 use web_sys::KeyboardEvent;
@@ -8,6 +9,8 @@ pub struct PlatformCoalescedKeyboard {
     key_down: JsValue,
     key_up: JsValue,
 }
+
+pub(crate) const ARBITRARY_WINDOW_PTR:*mut c_void = 0x01 as *mut c_void;
 
 impl PlatformCoalescedKeyboard {
     pub fn new(shared: &Arc<Shared>) -> Self {
@@ -22,7 +25,7 @@ impl PlatformCoalescedKeyboard {
             if let Some(shared) = weak.upgrade() {
                 let key = KeyboardKey::from_js_code(&code).expect(format!("Unknown key: {}", key).as_str());
 
-                shared.set_key_state(key, true);
+                shared.set_key_state(key, true, ARBITRARY_WINDOW_PTR);
             }
         }) as Box<dyn FnMut(KeyboardEvent)>);
         document
@@ -36,7 +39,7 @@ impl PlatformCoalescedKeyboard {
             let code = event.code();
             if let Some(shared) = weak_up.upgrade() {
                 let key = KeyboardKey::from_js_code(&code).expect(format!("Unknown key: {}", key).as_str());
-                shared.set_key_state(key, false);
+                shared.set_key_state(key, false, ARBITRARY_WINDOW_PTR);
             }
         }) as Box<dyn FnMut(KeyboardEvent)>);
         document
@@ -183,18 +186,12 @@ impl KeyboardKey {
             "IntlYen" => KeyboardKey::JISYen,
             "MediaTrackPrevious" => KeyboardKey::PreviousTrack,
             "MediaTrackNext" => KeyboardKey::NextTrack,
-            "NumpadEnter" => KeyboardKey::KeypadEnter,
-            "ControlRight" => KeyboardKey::RightControl,
-            "AudioVolumeMute" => KeyboardKey::Mute,
             "LaunchApp2" => KeyboardKey::LaunchApp2,
             "MediaPlayPause" => KeyboardKey::Play,
             "MediaStop" => KeyboardKey::Stop,
-            "AudioVolumeDown" => KeyboardKey::VolumeDown,
-            "AudioVolumeUp" => KeyboardKey::VolumeUp,
             "VolumeDown" => KeyboardKey::VolumeDown,
             "VolumeUp" => KeyboardKey::VolumeUp,
             "BrowserHome" => KeyboardKey::BrowserHome,
-            "NumpadDivide" => KeyboardKey::KeypadDivide,
             "AltRight" => KeyboardKey::RightOption,
             "NumLock" => KeyboardKey::NumLock,
             "Home" => KeyboardKey::Home,
