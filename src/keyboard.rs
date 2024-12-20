@@ -1,4 +1,6 @@
 use std::ffi::c_void;
+use std::hash::Hash;
+use std::marker::{PhantomData, PhantomPinned};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicPtr};
 
@@ -39,6 +41,7 @@ use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
 use crate::Window;
 
+#[derive(Debug)]
 struct Shared {
     key_states: Vec<AtomicBool>,
     window_ptr: AtomicPtr<c_void>,
@@ -65,9 +68,14 @@ impl Shared {
 
 
 
+#[derive(Debug)]
 pub struct Keyboard {
     shared: Arc<Shared>,
     platform_coalesced_keyboard: PlatformCoalescedKeyboard,
+    //mark this type as not-send-or-sync, as some platforms may not support this
+    _not_send_sync: PhantomData<*const ()>,
+    //why not, unpin as well
+    _not_unpin: PhantomPinned,
 }
 
 impl Keyboard {
@@ -80,6 +88,8 @@ impl Keyboard {
         Self {
             shared,
             platform_coalesced_keyboard,
+            _not_send_sync: PhantomData,
+            _not_unpin: PhantomPinned,
         }
     }
 
@@ -99,3 +109,27 @@ impl Keyboard {
 
 }
 
+//boilerplate
+
+impl PartialEq for Keyboard {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.shared, &other.shared)
+    }
+}
+
+impl Eq for Keyboard {}
+
+impl Hash for Keyboard {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        Arc::as_ptr(&self.shared).hash(state);
+    }
+}
+
+impl Default for Keyboard {
+    /**
+    The coalesced keyboard
+    */
+    fn default() -> Self {
+        Self::coalesced()
+    }
+}

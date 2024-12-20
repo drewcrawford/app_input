@@ -48,6 +48,7 @@ impl KeyboardState {
 }
 static KEYBOARD_STATE: OnceLock<Mutex<KeyboardState>> = OnceLock::new();
 
+#[derive(Debug)]
 pub(super) struct PlatformCoalescedKeyboard {
 
 }

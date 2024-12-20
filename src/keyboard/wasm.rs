@@ -5,6 +5,7 @@ use web_sys::KeyboardEvent;
 use wasm_bindgen::prelude::*;
 use crate::keyboard::key::KeyboardKey;
 
+#[derive(Debug)]
 pub struct PlatformCoalescedKeyboard {
     key_down: JsValue,
     key_up: JsValue,

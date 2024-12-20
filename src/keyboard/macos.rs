@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::Shared;
 
+#[derive(Debug)]
 pub struct PlatformCoalescedKeyboard {
     imp: *mut c_void,
 }

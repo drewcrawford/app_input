@@ -39,7 +39,7 @@ impl Default for KeyboardState {
 }
 
 
-
+#[derive(Debug)]
 pub(super) struct PlatformCoalescedKeyboard {
 
 }

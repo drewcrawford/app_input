@@ -10,6 +10,8 @@ pub(crate) mod windows;
 pub(crate) mod linux;
 
 use std::ffi::c_void;
+use std::hash::{Hash, Hasher};
+use std::marker::{PhantomData, PhantomPinned};
 #[cfg(target_os = "macos")]
 pub(crate) use macos as sys;
 
@@ -99,6 +101,10 @@ impl Shared {
 pub struct Mouse {
     shared: Arc<Shared>,
     sys: sys::PlatformCoalescedMouse,
+    //mark this type as not-send-or-sync, as some platforms may not support this
+    _not_send_sync: PhantomData<*const ()>,
+    //why not, unpin as well
+    _not_unpin: PhantomPinned,
 }
 
 impl Mouse {
@@ -108,7 +114,7 @@ impl Mouse {
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
         let coalesced = sys::PlatformCoalescedMouse::new(&shared);
-        Mouse{shared, sys: coalesced}
+        Mouse{shared, sys: coalesced, _not_send_sync: PhantomData, _not_unpin: PhantomPinned}
     }
 
     /**
@@ -125,5 +131,26 @@ impl Mouse {
 */
     pub fn window_pos(&self) -> Option<MouseWindowLocation> {
         todo!()
+    }
+}
+
+impl PartialEq for Mouse {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.shared, &other.shared)
+    }
+}
+
+impl Eq for Mouse {}
+
+impl Hash for Mouse {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        Arc::as_ptr(&self.shared).hash(state);
+    }
+}
+
+impl Default for Mouse {
+    ///The coalesced mouse.
+    fn default() -> Self {
+        Mouse::coalesced()
     }
 }

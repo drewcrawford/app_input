@@ -1,5 +1,5 @@
 #[repr(usize)]
-#[derive(Debug,Hash,Copy,Clone)]
+#[derive(Debug,Hash,Copy,Clone,PartialEq,Eq)]
 #[non_exhaustive]
 /**
 A key on the keyboard.  Maps to an OS scancode.
