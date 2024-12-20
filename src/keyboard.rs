@@ -1,5 +1,6 @@
+use std::ffi::c_void;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicPtr};
 
 
 /**
@@ -36,9 +37,11 @@ pub(crate) use linux as sys;
 
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
+use crate::Window;
 
 struct Shared {
     key_states: Vec<AtomicBool>,
+    window_ptr: AtomicPtr<c_void>,
 }
 
 impl Shared {
@@ -49,12 +52,13 @@ impl Shared {
         }
         Shared {
             key_states: vec,
+            window_ptr: AtomicPtr::new(std::ptr::null_mut()),
         }
     }
 
-    fn set_key_state(&self, key: KeyboardKey, state: bool) {
+    fn set_key_state(&self, key: KeyboardKey, state: bool, window_ptr: *mut c_void) {
         logwise::debuginternal_sync!("Setting key {key} to {state}",key=logwise::privacy::LogIt(key), state=state);
-
+        self.window_ptr.store(window_ptr, std::sync::atomic::Ordering::Relaxed);
         self.key_states[key as usize].store(state, std::sync::atomic::Ordering::Relaxed);
     }
 }

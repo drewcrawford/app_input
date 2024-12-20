@@ -29,6 +29,13 @@ final class PlatformCoalescedMouse:
         let sendContext = Int(bitPattern: context)
         
         self.monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDown, .leftMouseUp, .otherMouseDown, .otherMouseUp, .rightMouseDown, .rightMouseUp,.scrollWheel]) { event in
+            nonisolated(unsafe) let eventWindow: UnsafeMutableRawPointer?
+            if let window = event.window {
+                eventWindow = Unmanaged.passUnretained(window).toOpaque()
+            }
+            else {
+                eventWindow = nil
+            }
             switch event.type {
             case .mouseMoved:
 
@@ -41,7 +48,7 @@ final class PlatformCoalescedMouse:
                         let recvContext = UnsafeMutableRawPointer(bitPattern: sendContext)
                         let absRustCoords = convertToRustCoordinates(absolutePoint: cocoaPos, minX: minScreenX, maxY: maxScreenY)
                         let windowRustCoords = convertToRustCoordinates(absolutePoint: location, minX: 0, maxY: window.frame.size.height)
-                        raw_input_mouse_move(recvContext, absRustCoords.x, absRustCoords.y, Unmanaged.passUnretained(window).toOpaque(), windowRustCoords.x, windowRustCoords.y, window.frame.size.width, window.frame.size.height)
+                        raw_input_mouse_move(recvContext, absRustCoords.x, absRustCoords.y, eventWindow, windowRustCoords.x, windowRustCoords.y, window.frame.size.width, window.frame.size.height)
                     }
                     
                 }
@@ -53,19 +60,19 @@ final class PlatformCoalescedMouse:
                     
                 }
             case .leftMouseDown:
-                raw_input_mouse_button(context, 0, true)
+                raw_input_mouse_button(context, eventWindow, 0, true)
             case .leftMouseUp:
-                raw_input_mouse_button(context, 0, false)
+                raw_input_mouse_button(context, eventWindow, 0, false)
             case .rightMouseDown:
-                raw_input_mouse_button(context, 1, true)
+                raw_input_mouse_button(context, eventWindow, 1, true)
             case .rightMouseUp:
-                raw_input_mouse_button(context, 1, false)
+                raw_input_mouse_button(context, eventWindow, 1, false)
             case .otherMouseDown:
-                raw_input_mouse_button(context, UInt8(event.buttonNumber), true)
+                raw_input_mouse_button(context,  eventWindow, UInt8(event.buttonNumber), true)
             case .otherMouseUp:
-                raw_input_mouse_button(context, UInt8(event.buttonNumber), false)
+                raw_input_mouse_button(context,  eventWindow, UInt8(event.buttonNumber), false)
             case .scrollWheel:
-                raw_input_mouse_scroll(context, event.scrollingDeltaX, event.scrollingDeltaY)
+                raw_input_mouse_scroll(context,  eventWindow, event.scrollingDeltaX, event.scrollingDeltaY)
             default:
                 fatalError("\(event)")
             }

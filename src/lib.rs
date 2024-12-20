@@ -39,8 +39,17 @@ pub mod keyboard;
 ///Provides information about mouse events.
 pub mod mouse;
 
-
 pub use keyboard::sys::{debug_window_show, debug_window_hide};
+
+/**
+Provides information about the window an event was delivered to.
+
+# Platform specifics
+* on macOS, this is the pointer of an NSWindow.  No memory management is performed, so dereferencing the window may be invalid.
+
+*/
+#[derive(Debug,Hash,Eq,PartialEq,Copy,Clone)]
+pub struct Window(pub std::ptr::NonNull<std::ffi::c_void>);
 
 #[cfg(target_os="linux")]
 pub mod linux {

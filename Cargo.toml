@@ -8,6 +8,7 @@ edition = "2021"
 #logwise = {path = "../logwise"}
 logwise = "0.2.1"
 atomic_float = "1.1.0"
+raw-window-handle = "0.6.2"
 
 # macos
 [target.'cfg(target_os = "macos")'.dependencies]

@@ -1,6 +1,8 @@
 use std::ffi::c_void;
+use std::ptr::NonNull;
 use std::sync::{Arc, Weak};
 use crate::mouse::{MouseWindowLocation, Shared};
+use crate::Window;
 
 #[derive(Debug)]
 pub(crate) struct PlatformCoalescedMouse {
@@ -17,11 +19,12 @@ extern "C" fn raw_input_finish_mouse_event_context(ctx: *mut c_void) {
 }
 
 #[no_mangle]
-extern "C" fn raw_input_mouse_move(ctx: *const c_void, abs_pos_x: f64, abs_pos_y: f64, window: *const c_void, window_pos_x: f64, window_pos_y: f64, window_width: f64, window_height: f64) {
+extern "C" fn raw_input_mouse_move(ctx: *const c_void, abs_pos_x: f64, abs_pos_y: f64, window: *mut c_void, window_pos_x: f64, window_pos_y: f64, window_width: f64, window_height: f64) {
     let weak = unsafe { Weak::from_raw(ctx as *const Shared) };
     if let Some(shared) = weak.upgrade() {
         if !window.is_null() {
-            let loc = MouseWindowLocation::new(window_pos_x, window_pos_y, window_width, window_height);
+            let window = Some(Window(NonNull::new(window).unwrap()));
+            let loc = MouseWindowLocation::new(window_pos_x, window_pos_y, window_width, window_height, window);
             shared.set_window_location(loc);
         }
     }
@@ -29,20 +32,20 @@ extern "C" fn raw_input_mouse_move(ctx: *const c_void, abs_pos_x: f64, abs_pos_y
 }
 
 #[no_mangle]
-extern "C" fn raw_input_mouse_button(ctx: *const c_void, button: u8, down: bool) {
+extern "C" fn raw_input_mouse_button(ctx: *const c_void, window: *mut c_void, button: u8, down: bool) {
     let weak = unsafe { Weak::from_raw(ctx as *const Shared) };
     if let Some(shared) = weak.upgrade() {
-        shared.set_key_state(button, down);
+        shared.set_key_state(button, down, window);
     }
     std::mem::forget(weak);
 
 }
 
 #[no_mangle]
-extern "C" fn raw_input_mouse_scroll(ctx: *const c_void, delta_x: f64, delta_y: f64) {
+extern "C" fn raw_input_mouse_scroll(ctx: *const c_void, window: *mut c_void, delta_x: f64, delta_y: f64) {
     let weak = unsafe { Weak::from_raw(ctx as *const Shared)};
     if let Some(shared) = weak.upgrade() {
-        shared.add_scroll_delta(delta_x, delta_y);
+        shared.add_scroll_delta(delta_x, delta_y, window);
     }
     std::mem::forget(weak);
 }
