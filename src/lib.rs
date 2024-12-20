@@ -45,11 +45,14 @@ pub use keyboard::sys::{debug_window_show, debug_window_hide};
 Provides information about the window an event was delivered to.
 
 # Platform specifics
+* On Windows, this value contains an HWND.
 * on macOS, this is the pointer of an NSWindow.  No memory management is performed, so dereferencing the window may be invalid.
 * on wasm32, we attach to the global DOM window, and we choose an opaque value arbitrarily for this type.
 */
 #[derive(Debug,Hash,Eq,PartialEq,Copy,Clone)]
 pub struct Window(pub std::ptr::NonNull<std::ffi::c_void>);
+//we don't do anything with it so it's fine to send
+unsafe impl Send for Window {}
 
 #[cfg(target_os="linux")]
 pub mod linux {
