@@ -10,12 +10,13 @@ pub struct PlatformCoalescedKeyboard {
 
 
 
+
 #[no_mangle]
-unsafe extern "C" fn raw_input_key_notify_func(ctx: *mut c_void, key_code: u16, down: bool) {
+unsafe extern "C" fn raw_input_key_notify_func(ctx: *mut c_void, window: *mut c_void, key_code: u16, down: bool) {
     let shared = Weak::from_raw(ctx as *const Shared);
     if let Some(shared) = shared.upgrade() {
         let key_code = KeyboardKey::from_code(key_code).expect("Unknown key code {key_code}");
-        shared.set_key_state(key_code, down);
+        shared.set_key_state(key_code, down, window);
     }
     std::mem::forget(shared); //keep weak reference alive as it is still owned by the target function
 }

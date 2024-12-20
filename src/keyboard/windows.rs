@@ -58,12 +58,13 @@ Processes window key events.
 
 Returns LResult(0) if we handled the message, or nonzero otherwise.
 */
-pub fn kbd_window_proc(_hwnd: HWND, msg: u32, w_param: WPARAM, _l_param: LPARAM) -> LRESULT {
+pub fn kbd_window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, _l_param: LPARAM) -> LRESULT {
+    let window_ptr = hwnd.0;
     match msg {
         m if m == WM_KEYDOWN => {
             if let Some(key) = KeyboardKey::from_vk(w_param.0) {
                 KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-                    shared.set_key_state(key, true);
+                    shared.set_key_state(key, true, window_ptr);
                 });
                 LRESULT(0)
             }
@@ -75,7 +76,7 @@ pub fn kbd_window_proc(_hwnd: HWND, msg: u32, w_param: WPARAM, _l_param: LPARAM)
         m if m == WM_KEYUP => {
             if let Some(key) = KeyboardKey::from_vk(w_param.0) {
                 KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-                    shared.set_key_state(key, false);
+                    shared.set_key_state(key, false, window_ptr);
                 });
                 LRESULT(0)
             }

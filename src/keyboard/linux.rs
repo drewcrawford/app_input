@@ -1,8 +1,10 @@
+use std::ffi::c_void;
 use std::fs::File;
 use std::os::fd::AsFd;
 use memmap2::MmapMut;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle, WEnum};
+use wayland_client::backend::ObjectId;
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
 use wayland_client::protocol::{wl_compositor, wl_registry, wl_shm};
 use wayland_client::protocol::wl_buffer::WlBuffer;
@@ -180,48 +182,44 @@ impl Dispatch<XdgToplevel, ()> for AppData {
 
 
 
-impl Dispatch<WlPointer, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlPointer, event: <WlPointer as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+impl Dispatch<WlPointer, ObjectId> for AppData {
+    fn event(_state: &mut Self, _proxy: &WlPointer, event: <WlPointer as Proxy>::Event, window: &ObjectId, _conn: &Connection, _qhandle: &QueueHandle<Self>) {
         match event {
             wayland_client::protocol::wl_pointer::Event::Motion {time,surface_x,surface_y} => {
                 motion_event(time, surface_x, surface_y);
 
             }
             wayland_client::protocol::wl_pointer::Event::Button {serial: _, time, button, state} => {
-                button_event(time, button, state.into())
+                button_event(time, button, state.into(), window.clone())
             }
             wayland_client::protocol::wl_pointer::Event::Axis {time, axis, value} => {
-                axis_event(time, axis.into(), value);
+                axis_event(time, axis.into(), value, window.clone());
             }
             _ => println!("got WlPointer event {:?}",event)
         }
     }
 }
 
-impl Dispatch<WlKeyboard, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlKeyboard, event: <WlKeyboard as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+/**
+Call this from [WlKeyboard] dispatch for [wayland_client::protocol::wl_keyboard::Event::Key] event.
+*/
+pub fn wl_keyboard_event(serial: u32, time: u32, key: u32, state: u32, surface_id: ObjectId) {
+    if let Some(key) = KeyboardKey::from_vk(key) {
+        let down = state == 1;
+        KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
+            shared.set_key_state(key, down, surface_id.protocol_id() as *mut c_void)
+        })
+    }
+    else {
+        println!("Unknown key {key}");
+    }
+}
+
+impl Dispatch<WlKeyboard, ObjectId> for AppData {
+    fn event(_state: &mut Self, _proxy: &WlKeyboard, event: <WlKeyboard as Proxy>::Event, data: &ObjectId, _conn: &Connection, _qhandle: &QueueHandle<Self>) {
         match event {
-            wayland_client::protocol::wl_keyboard::Event::Key {serial: _, time: _, key, state} => {
-                if let Some(key) = KeyboardKey::from_vk(key) {
-                    let down = match state {
-                        WEnum::Value(KeyState::Pressed) => {
-                            true
-                        }
-                        WEnum::Value(KeyState::Released) => {
-                            false
-                        }
-                        _ => {
-                            println!("Unknown key state {:?}", state);
-                            false
-                        }
-                    };
-                    KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-                        shared.set_key_state(key, down)
-                    })
-                }
-                else {
-                    println!("Unknown key {key}");
-                }
+            wayland_client::protocol::wl_keyboard::Event::Key {serial, time, key, state} => {
+                wl_keyboard_event(serial, time, key, state.into(), data.clone());
             }
             _ => println!("got WlKeyboard event {:?}",event)
         }
@@ -267,8 +265,8 @@ pub fn debug_window_show() {
     surface.commit();
 
     let seat: WlSeat = globals.bind(&qh, 8..=9, ()).expect("Can't bind seat");
-    let _pointer = seat.get_pointer(&qh, ());
-    let _keyboard = seat.get_keyboard(&qh, ());
+    let _pointer = seat.get_pointer(&qh, surface.id());
+    let _keyboard = seat.get_keyboard(&qh, surface.id());
 
 
     println!("Window should be displayed. Running event loop...");

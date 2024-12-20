@@ -1,5 +1,9 @@
-use std::sync::{Arc, Mutex, OnceLock,Weak};
+use std::ffi::c_void;
+use std::ptr::NonNull;
+use std::sync::{Arc, Mutex, OnceLock, Weak};
+use wayland_client::backend::ObjectId;
 use crate::mouse::{MouseWindowLocation, Shared};
+use crate::Window;
 
 #[derive(Debug)]
 pub(super) struct PlatformCoalescedMouse {
@@ -12,6 +16,7 @@ struct MouseState {
     recent_y_pos: Option<f64>,
     recent_window_width: Option<i32>,
     recent_window_height: Option<i32>,
+    recent_window: Option<ObjectId>,
 }
 impl Default for MouseState {
     fn default() -> Self {
@@ -21,6 +26,7 @@ impl Default for MouseState {
             recent_y_pos: None,
             recent_window_width: None,
             recent_window_height: None,
+            recent_window: None
         }
     }
 }
@@ -39,7 +45,17 @@ impl MouseState {
     fn send_events_if_needed(&mut self) {
         if let (Some(recent_window_width), Some(recent_window_height), Some(recent_x_pos), Some(recent_y_pos)) =
             (self.recent_window_width, self.recent_window_height, self.recent_x_pos, self.recent_y_pos){
-            let pos = MouseWindowLocation::new(recent_x_pos, recent_y_pos, recent_window_width as f64, recent_window_height as f64);
+            
+            let window = match self.recent_window.as_ref() {
+                None => None,
+                Some(object_id) => {
+                   match NonNull::new(object_id.protocol_id() as *mut c_void) {
+                       Some(non_null) => Some(Window(non_null)),
+                       None => None
+                   }
+                }
+            };
+            let pos = MouseWindowLocation::new(recent_x_pos, recent_y_pos, recent_window_width as f64, recent_window_height as f64, window);
             self.apply_all(|shared| {
                 shared.set_window_location(pos);
             })
@@ -47,13 +63,23 @@ impl MouseState {
     }
 }
 
-pub fn motion_event(_time: u32, surface_x: f64, surface_y: f64) {
+/**
+Call this to handle [wayland_client::protocol::wl_pointer::Event::Motion].
+
+Call this from your wayland dispatch queue.
+*/
+pub fn motion_event(time: u32, surface_x: f64, surface_y: f64) {
     let mut lock = MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap();
     lock.recent_x_pos = Some(surface_x);
     lock.recent_y_pos = Some(surface_y);
     lock.send_events_if_needed();
 }
 
+/**
+Call this to handle [wayland_protocols::xdg::shell::client::xdg_toplevel::Event::Configure].
+
+Call this from your wayland dispatch queue.
+*/
 pub fn xdg_toplevel_configure_event(width: i32, height: i32) {
     let mut lock = MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap();
     lock.recent_window_width = Some(width);
@@ -61,7 +87,12 @@ pub fn xdg_toplevel_configure_event(width: i32, height: i32) {
     lock.send_events_if_needed();
 }
 
-pub fn button_event(_time: u32, button: u32, state: u32) {
+/**
+Call this to handle wayland_client::protocol::wl_pointer::Event::Button.
+
+Call this from your wayland dispatch queue.
+*/
+pub fn button_event(time: u32, button: u32, state: u32, window: ObjectId) {
     let down = if state == 0 {
         false
     }
@@ -87,23 +118,23 @@ pub fn button_event(_time: u32, button: u32, state: u32) {
         
     };
     MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-        shared.set_key_state(btn_code, down);
+        shared.set_key_state(btn_code, down, window.protocol_id() as *mut c_void);
     })
 }
 
-pub fn axis_event(_time: u32, axis: u32, value: f64) {
+pub fn axis_event(_time: u32, axis: u32, value: f64, window: ObjectId) {
     if axis == 0 {
         //vertical
         MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared |{
-            shared.add_scroll_delta(0.0,value);
+            shared.add_scroll_delta(0.0,value, window.protocol_id() as *mut c_void);
         })
     }
     else { //horizontal
         MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared |{
-            shared.add_scroll_delta(value,0.0);
+            shared.add_scroll_delta(value,0.0, window.protocol_id() as *mut c_void);
         })
     }
-    
+
 }
 
 

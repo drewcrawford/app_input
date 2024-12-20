@@ -1,9 +1,12 @@
+use std::ffi::c_void;
 use std::mem::MaybeUninit;
+use std::ptr::NonNull;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
 use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1, XBUTTON2};
-use crate::mouse::{MouseAbsoluteLocation, MouseWindowLocation, Shared};
+use crate::mouse::{MouseWindowLocation, Shared};
+use crate::Window;
 
 fn get_x_lparam(lparam: LPARAM) -> i16 {
     ((lparam.0 as usize) & 0xFFFF) as u16 as i16
@@ -65,58 +68,60 @@ If we processed the message, returns LRESULT(0).  Otherwise returns non-zero.
 pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     match msg {
         msg if msg == WM_MOUSEMOVE => {
+            let window = match NonNull::new(hwnd.0) {
+                None => {None}
+                Some(non_null) => {Some(Window(non_null))}
+            };
             let x = get_x_lparam(l_param);
             let y = get_y_lparam(l_param);
             let mut point = MaybeUninit::uninit();
             unsafe{ClientToScreen(hwnd, point.as_mut_ptr())}.expect("failed to get client to screen");
             let point = unsafe{point.assume_init()};
-            let abs_mouse = MouseAbsoluteLocation::new((point.x + x as i32) as f64, (point.y + y as i32) as f64);
 
             let mut rect = MaybeUninit::uninit();
             unsafe{GetClientRect(hwnd,rect.as_mut_ptr())}.expect("failed to get client rect");
 
             let rect = unsafe{rect.assume_init()};
-            let rel_mouse = MouseWindowLocation::new(x as f64, y as f64, rect.right as f64, rect.bottom as f64 );
+            let rel_mouse = MouseWindowLocation::new(x as f64, y as f64, rect.right as f64, rect.bottom as f64, window );
 
             apply_all(|shared| {
                 shared.set_window_location(rel_mouse);
-                shared.set_absolute_location(abs_mouse);
             });
             LRESULT(0)
         }
         msg if msg == WM_LBUTTONDOWN => {
             apply_all(|shared| {
-                shared.set_key_state(0, true);
+                shared.set_key_state(0, true, hwnd.0);
             });
             LRESULT(0)
         }
         msg if msg == WM_LBUTTONUP => {
             apply_all(|shared| {
-                shared.set_key_state(0, false);
+                shared.set_key_state(0, false, hwnd.0);
             });
             LRESULT(0)
         }
         msg if msg == WM_RBUTTONDOWN => {
             apply_all(|shared| {
-                shared.set_key_state(1, true);
+                shared.set_key_state(1, true, hwnd.0);
             });
             LRESULT(0)
         }
         msg if msg == WM_RBUTTONUP => {
             apply_all(|shared| {
-                shared.set_key_state(1, false);
+                shared.set_key_state(1, false, hwnd.0);
             });
             LRESULT(0)
         }
         msg if msg == WM_MBUTTONDOWN => {
             apply_all(|shared| {
-                shared.set_key_state(2, true);
+                shared.set_key_state(2, true, hwnd.0);
             });
             LRESULT(0)
         }
         msg if msg == WM_MBUTTONUP => {
             apply_all(|shared| {
-                shared.set_key_state(2, false);
+                shared.set_key_state(2, false, hwnd.0);
             });
             LRESULT(0)
         }
@@ -134,7 +139,7 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
                 }
             };
             apply_all(|shared| {
-                shared.set_key_state(key, true);
+                shared.set_key_state(key, true, hwnd.0);
             });
             LRESULT(0)
         }
@@ -152,7 +157,7 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
                 }
             };
             apply_all(|shared| {
-                shared.set_key_state(key, false);
+                shared.set_key_state(key, false, hwnd.0);
             });
             LRESULT(0)
         }
@@ -160,7 +165,7 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
             //todo: should this be scaled in some way?
             let delta = get_wheel_delta_wparam(w_param);
             apply_all(|shared| {
-                shared.add_scroll_delta(0.0, delta as f64);
+                shared.add_scroll_delta(0.0, delta as f64, hwnd.0);
             });
             LRESULT(0)
         }
@@ -168,7 +173,7 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
             //todo: should this be scaled in some way?
             let delta = get_wheel_delta_wparam(w_param);
             apply_all(|shared| {
-                shared.add_scroll_delta(delta as f64, 0.0);
+                shared.add_scroll_delta(delta as f64, 0.0, hwnd.0);
             });
             LRESULT(0)
         }

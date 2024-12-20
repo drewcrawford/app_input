@@ -26,18 +26,25 @@ final class PlatformCoalescedKeyboard:
         }
         self.context = context
         self.monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp, .flagsChanged]) { event in
+            let eventWindow: UnsafeMutableRawPointer?
+            if let window = event.window {
+                eventWindow = Unmanaged.passUnretained(window).toOpaque()
+            }
+            else {
+                eventWindow = nil
+            }
             switch event.type {
             case .keyDown:
-                raw_input_key_notify_func(context, event.keyCode, true)
+                raw_input_key_notify_func(context,  eventWindow, event.keyCode, true)
             case .keyUp:
-                raw_input_key_notify_func(context, event.keyCode, false)
+                raw_input_key_notify_func(context, eventWindow, event.keyCode, false)
             case .flagsChanged:
                 func notifyModifier(event: NSEvent, flag: NSEvent.ModifierFlags) {
                     if event.modifierFlags.contains(flag) {
-                        raw_input_key_notify_func(context, event.keyCode, true)
+                        raw_input_key_notify_func(context, eventWindow, event.keyCode, true)
                     }
                     else {
-                        raw_input_key_notify_func(context, event.keyCode, false)
+                        raw_input_key_notify_func(context, eventWindow, event.keyCode, false)
                     }
                 }
 
@@ -86,7 +93,6 @@ final class PlatformCoalescedKeyboard:
     }
 }
 
-public typealias KeyNotifyFunc = @convention(c) (UnsafeMutableRawPointer, UInt16, Bool) -> ()
 
 @_cdecl("PlatformCoalescedKeyboardNew") public func PlatformCoalescedKeyboardNew( context: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer {
     let p = PlatformCoalescedKeyboard(context: context)
