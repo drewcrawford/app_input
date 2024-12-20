@@ -4,11 +4,10 @@ use memmap2::MmapMut;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use wayland_client::{Connection, Dispatch, Proxy, QueueHandle, WEnum};
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
-use wayland_client::protocol::{wl_compositor, wl_output, wl_registry, wl_shm};
+use wayland_client::protocol::{wl_compositor, wl_registry, wl_shm};
 use wayland_client::protocol::wl_buffer::WlBuffer;
 use wayland_client::protocol::wl_compositor::WlCompositor;
 use wayland_client::protocol::wl_keyboard::{KeyState, WlKeyboard};
-use wayland_client::protocol::wl_output::{Mode, WlOutput};
 use wayland_client::protocol::wl_pointer::WlPointer;
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_shm::{Format, WlShm};
@@ -21,7 +20,7 @@ use wayland_protocols::xdg::shell::client::xdg_wm_base::{Event, XdgWmBase};
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::{Shared};
 use crate::mouse::linux::motion_event;
-use crate::mouse::sys::{button_event, xdg_toplevel_configure_event};
+use crate::mouse::sys::{axis_event, button_event, xdg_toplevel_configure_event};
 
 struct KeyboardState {
     shareds: Vec<Weak<Shared>>
@@ -166,7 +165,7 @@ impl wayland_client::Dispatch<wl_registry::WlRegistry, GlobalListContents> for A
 }
 
 impl Dispatch<XdgToplevel, ()> for AppData {
-    fn event(_state: &mut Self, proxy: &XdgToplevel, event: <XdgToplevel as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+    fn event(_state: &mut Self, _proxy: &XdgToplevel, event: <XdgToplevel as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
         match event {
             xdg_toplevel::Event::Configure {  width, height, states: _ } => {
                 xdg_toplevel_configure_event(width, height);
@@ -190,6 +189,9 @@ impl Dispatch<WlPointer, ()> for AppData {
             }
             wayland_client::protocol::wl_pointer::Event::Button {serial: _, time, button, state} => {
                 button_event(time, button, state.into())
+            }
+            wayland_client::protocol::wl_pointer::Event::Axis {time, axis, value} => {
+                axis_event(time, axis.into(), value);
             }
             _ => println!("got WlPointer event {:?}",event)
         }
@@ -264,7 +266,7 @@ pub fn debug_window_show() {
     surface.attach(Some(&buffer), 0, 0);
     surface.commit();
 
-    let seat: WlSeat = globals.bind(&qh, 6..=6, ()).expect("Can't bind seat");
+    let seat: WlSeat = globals.bind(&qh, 8..=9, ()).expect("Can't bind seat");
     let _pointer = seat.get_pointer(&qh, ());
     let _keyboard = seat.get_keyboard(&qh, ());
 

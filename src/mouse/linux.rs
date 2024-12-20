@@ -47,7 +47,7 @@ impl MouseState {
     }
 }
 
-pub fn motion_event(time: u32, surface_x: f64, surface_y: f64) {
+pub fn motion_event(_time: u32, surface_x: f64, surface_y: f64) {
     let mut lock = MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap();
     lock.recent_x_pos = Some(surface_x);
     lock.recent_y_pos = Some(surface_y);
@@ -61,7 +61,7 @@ pub fn xdg_toplevel_configure_event(width: i32, height: i32) {
     lock.send_events_if_needed();
 }
 
-pub fn button_event(time: u32, button: u32, state: u32) {
+pub fn button_event(_time: u32, button: u32, state: u32) {
     let down = if state == 0 {
         false
     }
@@ -89,6 +89,21 @@ pub fn button_event(time: u32, button: u32, state: u32) {
     MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
         shared.set_key_state(btn_code, down);
     })
+}
+
+pub fn axis_event(_time: u32, axis: u32, value: f64) {
+    if axis == 0 {
+        //vertical
+        MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared |{
+            shared.add_scroll_delta(0.0,value);
+        })
+    }
+    else { //horizontal
+        MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared |{
+            shared.add_scroll_delta(value,0.0);
+        })
+    }
+    
 }
 
 
