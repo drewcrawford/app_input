@@ -39,7 +39,6 @@ pub(crate) use linux as sys;
 
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
-use crate::Window;
 
 #[derive(Debug)]
 struct Shared {
@@ -71,7 +70,7 @@ impl Shared {
 #[derive(Debug)]
 pub struct Keyboard {
     shared: Arc<Shared>,
-    platform_coalesced_keyboard: PlatformCoalescedKeyboard,
+    _platform_coalesced_keyboard: PlatformCoalescedKeyboard,
     //mark this type as not-send-or-sync, as some platforms may not support this
     _not_send_sync: PhantomData<*const ()>,
     //why not, unpin as well
@@ -84,10 +83,10 @@ impl Keyboard {
     */
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
-        let platform_coalesced_keyboard = PlatformCoalescedKeyboard::new(&shared);
+        let _platform_coalesced_keyboard = PlatformCoalescedKeyboard::new(&shared);
         Self {
             shared,
-            platform_coalesced_keyboard,
+            _platform_coalesced_keyboard,
             _not_send_sync: PhantomData,
             _not_unpin: PhantomPinned,
         }
@@ -104,7 +103,7 @@ impl Keyboard {
 
     */
     pub fn is_pressed(&self, key: KeyboardKey) -> bool {
-        todo!()
+        self.shared.key_states[key as usize].load(std::sync::atomic::Ordering::Relaxed)
     }
 
 }

@@ -29,13 +29,18 @@ use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 use atomic_float::AtomicF64;
 use crate::Window;
 
+pub const MOUSE_BUTTON_LEFT: u8 = 0;
+pub const MOUSE_BUTTON_RIGHT: u8 = 1;
+pub const MOUSE_BUTTON_MIDDLE: u8 = 2;
+
+
 /**
 Mouse's location in the window, in points.
 
 Origin at the upper-left.
 */
 #[derive(Debug,Clone,Copy)]
-struct MouseWindowLocation {
+pub struct MouseWindowLocation {
     pos_x: f64,
     pos_y: f64,
     window_width: f64,
@@ -130,7 +135,25 @@ impl Mouse {
         * [crate::mouse::linux::xdg_toplevel_configure_event]
 */
     pub fn window_pos(&self) -> Option<MouseWindowLocation> {
-        todo!()
+        self.shared.window.lock().unwrap().clone()
+    }
+
+    /**
+    Determines if the mouse button specified is down or not.
+
+    * button: Pass a value like [MOUSE_BUTTON_LEFT].  Unspecified buttons may be supported on a best-effort basis.
+    */
+    pub fn button_state(&self, button: u8) -> bool {
+        self.shared.buttons[button as usize].load(Ordering::Relaxed)
+    }
+
+    /**
+    Access the accumulated scroll delta, resetting the accumulated delta to 0
+    */
+    pub fn load_clear_scroll_delta(&mut self) -> (f64, f64) {
+        let x = self.shared.scroll_delta_x.swap(0.0, Ordering::Relaxed);
+        let y = self.shared.scroll_delta_y.swap(0.0, Ordering::Relaxed);
+        (x,y)
     }
 }
 

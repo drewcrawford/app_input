@@ -38,25 +38,13 @@ final class PlatformCoalescedMouse:
             }
             switch event.type {
             case .mouseMoved:
-
-                let minScreenX = NSScreen.screens.map({$0.frame.minX}).min() ?? 0
-                let maxScreenY = NSScreen.screens.map({$0.frame.maxY}).max() ?? 0
                 let location = event.locationInWindow
                 if let window = event.window {
                     MainActor.assumeIsolated {
-                        let cocoaPos = NSPoint(x: window.frame.origin.x + location.x, y: window.frame.origin.y + location.y)
                         let recvContext = UnsafeMutableRawPointer(bitPattern: sendContext)
-                        let absRustCoords = convertToRustCoordinates(absolutePoint: cocoaPos, minX: minScreenX, maxY: maxScreenY)
                         let windowRustCoords = convertToRustCoordinates(absolutePoint: location, minX: 0, maxY: window.frame.size.height)
-                        raw_input_mouse_move(recvContext, absRustCoords.x, absRustCoords.y, eventWindow, windowRustCoords.x, windowRustCoords.y, window.frame.size.width, window.frame.size.height)
+                        raw_input_mouse_move(recvContext, eventWindow, windowRustCoords.x, windowRustCoords.y, window.frame.size.width, window.frame.size.height)
                     }
-                    
-                }
-                else {
-                    //treat location as absolute coordinates
-                    
-                    let rustCoords = convertToRustCoordinates(absolutePoint: location, minX: minScreenX, maxY: maxScreenY)
-                    raw_input_mouse_move(context, rustCoords.x, rustCoords.y, nil, 0, 0, 0,0)
                     
                 }
             case .leftMouseDown:

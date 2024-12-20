@@ -19,7 +19,7 @@ extern "C" fn raw_input_finish_mouse_event_context(ctx: *mut c_void) {
 }
 
 #[no_mangle]
-extern "C" fn raw_input_mouse_move(ctx: *const c_void, abs_pos_x: f64, abs_pos_y: f64, window: *mut c_void, window_pos_x: f64, window_pos_y: f64, window_width: f64, window_height: f64) {
+extern "C" fn raw_input_mouse_move(ctx: *const c_void, window: *mut c_void, window_pos_x: f64, window_pos_y: f64, window_width: f64, window_height: f64) {
     let weak = unsafe { Weak::from_raw(ctx as *const Shared) };
     if let Some(shared) = weak.upgrade() {
         if !window.is_null() {

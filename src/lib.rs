@@ -1,6 +1,6 @@
 /*!
 
-input_gui is a cross-platform library for receiving keyboard and mouse events.
+app_input is a cross-platform library for receiving keyboard and mouse events.
 
 # Design principles
 

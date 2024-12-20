@@ -1,6 +1,6 @@
-use raw_input::keyboard::Keyboard;
-use raw_input::{debug_window_show, debug_window_hide};
-use raw_input::mouse::Mouse;
+use app_input::keyboard::Keyboard;
+use app_input::{debug_window_show, debug_window_hide};
+use app_input::mouse::Mouse;
 
 fn test_board() {
     #[cfg(target_arch = "wasm32")]
