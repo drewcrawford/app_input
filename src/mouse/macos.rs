@@ -5,7 +5,7 @@ use crate::mouse::{MouseWindowLocation, Shared};
 use crate::Window;
 
 #[derive(Debug)]
-pub(crate) struct PlatformCoalescedMouse {
+pub(super) struct PlatformCoalescedMouse {
     imp: *mut c_void,
 }
 

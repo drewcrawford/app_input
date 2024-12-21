@@ -5,7 +5,7 @@ use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::Shared;
 
 #[derive(Debug)]
-pub struct PlatformCoalescedKeyboard {
+pub(super) struct PlatformCoalescedKeyboard {
     imp: *mut c_void,
 }
 

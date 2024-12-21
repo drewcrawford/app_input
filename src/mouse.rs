@@ -11,7 +11,6 @@ pub(crate) mod linux;
 
 use std::ffi::c_void;
 use std::hash::{Hash, Hasher};
-use std::marker::{PhantomData, PhantomPinned};
 #[cfg(target_os = "macos")]
 pub(crate) use macos as sys;
 
@@ -48,10 +47,16 @@ pub struct MouseWindowLocation {
     window: Option<Window>,
 }
 
+
 impl MouseWindowLocation {
     fn new(pos_x: f64, pos_y: f64, window_width: f64, window_height: f64, window: Option<Window>) -> Self {
         MouseWindowLocation{pos_x, pos_y, window_width, window_height, window}
     }
+
+    pub fn pos_x(&self) -> f64 { self.pos_x }
+    pub fn pos_y(&self) -> f64 { self.pos_y }
+    pub fn window_width(&self) -> f64 { self.window_width }
+    pub fn window_height(&self) -> f64 { self.window_height }
 }
 
 
@@ -105,7 +110,7 @@ impl Shared {
 #[derive(Debug)]
 pub struct Mouse {
     shared: Arc<Shared>,
-    sys: sys::PlatformCoalescedMouse,
+    _sys: sys::PlatformCoalescedMouse,
 }
 
 impl Mouse {
@@ -115,7 +120,7 @@ impl Mouse {
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
         let coalesced = sys::PlatformCoalescedMouse::new(&shared);
-        Mouse{shared, sys: coalesced}
+        Mouse{shared, _sys: coalesced}
     }
 
     /**

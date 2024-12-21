@@ -1,6 +1,5 @@
 use std::ffi::c_void;
 use std::hash::Hash;
-use std::marker::{PhantomData, PhantomPinned};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicPtr};
 
