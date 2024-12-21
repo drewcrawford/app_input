@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 #[cfg(target_os = "macos")]
 pub(crate) mod macos;
 #[cfg(target_arch = "wasm32")]

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::ptr::NonNull;
 use std::sync::Arc;
 use wasm_bindgen::prelude::*;

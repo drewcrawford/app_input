@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 //
 //  DetectMainThreadPolicy.swift
 //  SwiftRawInput

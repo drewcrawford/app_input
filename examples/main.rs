@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use app_input::keyboard::Keyboard;
 use app_input::{debug_window_show, debug_window_hide};
 use app_input::mouse::Mouse;

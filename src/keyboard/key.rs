@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 #[repr(usize)]
 #[derive(Debug,Hash,Copy,Clone,PartialEq,Eq)]
 #[non_exhaustive]

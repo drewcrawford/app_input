@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 use std::ffi::c_void;
 use std::sync::Arc;
 use crate::keyboard::{Keyboard, Shared};
