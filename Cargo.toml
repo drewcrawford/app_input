@@ -15,7 +15,7 @@ rust-version = "1.79.0"
 
 [dependencies]
 #logwise = {path = "../logwise"}
-logwise = "0.2.1"
+logwise = "0.2.2"
 atomic_float = "1.1.0"
 raw-window-handle = "0.6.2"
 
