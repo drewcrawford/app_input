@@ -8,7 +8,7 @@ homepage = "https://sealedabstract.com/code/app_input"
 repository = "https://github.com/drewcrawford/app_input"
 keywords = ["mouse","keyboard","input"]
 categories = ["gui","hardware-support","os","wasm"]
-license = "MPL-2"
+license = "MPL-2.0"
 exclude = [".*"]
 rust-version = "1.79.0"
 
