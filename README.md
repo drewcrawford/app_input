@@ -1,5 +1,7 @@
 app_input is a cross-platform library for receiving keyboard and mouse events.
 
+![logo](art/logo.png)
+
 # Design principles
 
 * Use the best modern backend on each platform
