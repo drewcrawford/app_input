@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 use std::ffi::c_void;
 use std::sync::Arc;
-use crate::keyboard::{Keyboard, Shared};
+use crate::keyboard::{Shared};
 use web_sys::KeyboardEvent;
 use wasm_bindgen::prelude::*;
 use crate::keyboard::key::KeyboardKey;
 
 #[derive(Debug)]
-pub struct PlatformCoalescedKeyboard {
-    key_down: JsValue,
-    key_up: JsValue,
+pub(super) struct PlatformCoalescedKeyboard {
+    _key_down: JsValue,
+    _key_up: JsValue,
 }
+
+unsafe impl Send for PlatformCoalescedKeyboard {}
+unsafe impl Sync for PlatformCoalescedKeyboard {}
 
 pub(crate) const ARBITRARY_WINDOW_PTR:*mut c_void = 0x01 as *mut c_void;
 
@@ -52,8 +55,8 @@ impl PlatformCoalescedKeyboard {
 
 
         Self {
-            key_down: keydown_callback.into_js_value(),
-            key_up: keyup_callback.into_js_value(),
+            _key_down: keydown_callback.into_js_value(),
+            _key_up: keyup_callback.into_js_value(),
         }
 
     }

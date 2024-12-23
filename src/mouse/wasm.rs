@@ -17,12 +17,15 @@ fn js_button_to_rust(button: i16) -> u8 {
 }
 
 #[derive(Debug)]
-pub(crate) struct PlatformCoalescedMouse {
-    mouse_listener: JsValue,
-    mousedown_listener: JsValue,
-    mouseup_listener: JsValue,
-    wheel_listener: JsValue,
+pub(super) struct PlatformCoalescedMouse {
+    _mouse_listener: JsValue,
+    _mousedown_listener: JsValue,
+    _mouseup_listener: JsValue,
+    _wheel_listener: JsValue,
 }
+
+unsafe impl Send for PlatformCoalescedMouse {}
+unsafe impl Sync for PlatformCoalescedMouse {}
 
 impl PlatformCoalescedMouse {
     pub fn new(shared: &Arc<crate::mouse::Shared>) -> Self {
@@ -108,10 +111,10 @@ impl PlatformCoalescedMouse {
 
 
         Self {
-            mouse_listener: mousemove_callback.into_js_value(),
-            mousedown_listener: mousedown_callback.into_js_value(),
-            mouseup_listener: mouseup_callback.into_js_value(),
-            wheel_listener: wheel_callback.into_js_value(),
+            _mouse_listener: mousemove_callback.into_js_value(),
+            _mousedown_listener: mousedown_callback.into_js_value(),
+            _mouseup_listener: mouseup_callback.into_js_value(),
+            _wheel_listener: wheel_callback.into_js_value(),
         }
 
 
