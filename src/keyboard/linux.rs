@@ -401,7 +401,7 @@ impl KeyboardKey {
             108 => Some(KeyboardKey::DownArrow),
             109 => Some(KeyboardKey::PageDown),
             110 => Some(KeyboardKey::Insert),
-            111 => Some(KeyboardKey::Delete),
+            111 => Some(KeyboardKey::ForwardDelete),
             //macro
             113 => Some(KeyboardKey::Mute),
             114 => Some(KeyboardKey::VolumeDown),
