@@ -156,6 +156,7 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                 else {
                     late_toggle_off = false;
                 }
+                let is_numlock_enabled = modifiers & key_to_modifier(KeyboardKey::NumLock) != 0;
                 //this struct loosely corresponds to ATK KeyEventStruct
                 //https://docs.gtk.org/atk/struct.KeyEventStruct.html
                 //which is the only documentation I can find but I have found some differences:
@@ -163,7 +164,7 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                     //pressed or released
                     event_type,
                     //atk calls this 'keyval' and says 'representing a keysym value corresponding to those used by GDK and X11: see /usr/X11/include/keysymdef.h.'
-                    id: key_to_id(key),
+                    id: key_to_id(key, is_numlock_enabled),
                     /*atk calls this 'keycode' and says 'The raw hardware code that generated the key event. This field is raraly [sic] useful.'
 
                     In fact it is used extensively  by orca and is not a hardware code but an X11 keycode, which is I guess
@@ -233,7 +234,7 @@ pub fn ax_press(key: KeyboardKey, pressed: bool) {
 }
 
 //evidently based on /usr/X11/include/keysymdef.h
-fn key_to_id(key: KeyboardKey) -> i32 {
+fn key_to_id(key: KeyboardKey, is_numlock_enabled: bool) -> i32 {
     match key {
         // Alphabet keys
         KeyboardKey::A => 0x0061,  // XK_a
@@ -276,17 +277,17 @@ fn key_to_id(key: KeyboardKey) -> i32 {
         KeyboardKey::Num9 => 0x0039,  // XK_9
 
         // Keypad
-        KeyboardKey::Keypad0 => 0xffb0,  // XK_KP_0
-        KeyboardKey::Keypad1 => 0xffb1,  // XK_KP_1
-        KeyboardKey::Keypad2 => 0xffb2,  // XK_KP_2
-        KeyboardKey::Keypad3 => 0xffb3,  // XK_KP_3
-        KeyboardKey::Keypad4 => 0xffb4,  // XK_KP_4
-        KeyboardKey::Keypad5 => 0xffb5,  // XK_KP_5
-        KeyboardKey::Keypad6 => 0xffb6,  // XK_KP_6
-        KeyboardKey::Keypad7 => 0xffb7,  // XK_KP_7
-        KeyboardKey::Keypad8 => 0xffb8,  // XK_KP_8
-        KeyboardKey::Keypad9 => 0xffb9,  // XK_KP_9
-        KeyboardKey::KeypadDecimal => 0xffae,  // XK_KP_Decimal
+        KeyboardKey::Keypad0 => if is_numlock_enabled {0xffb0} else {0xff95} ,  // XK_KP_0, XK_KP_HOME
+        KeyboardKey::Keypad1 => if is_numlock_enabled{0xffb1} else {0xff9c},  // XK_KP_1, XK_KP_END
+        KeyboardKey::Keypad2 => if is_numlock_enabled{0xffb2} else {0xff99},  // XK_KP_2, XK_KP_DOWN
+        KeyboardKey::Keypad3 => if is_numlock_enabled{0xffb3} else {0xff9b},  // XK_KP_3, XK_KP_PAGE_DOWN
+        KeyboardKey::Keypad4 => if is_numlock_enabled{0xffb4} else {0xff96},  // XK_KP_4, XK_KP_LEFT
+        KeyboardKey::Keypad5 => if is_numlock_enabled{0xffb5} else {0xff9d},  // XK_KP_5, XK_KP_BEGIN
+        KeyboardKey::Keypad6 => if is_numlock_enabled{0xffb6} else {0xff98},  // XK_KP_6, XK_KP_RIGHT
+        KeyboardKey::Keypad7 => if is_numlock_enabled{0xffb7} else {0xff97},  // XK_KP_7, XK_KP_UP
+        KeyboardKey::Keypad8 => if is_numlock_enabled{0xffb8} else {0xff9a},  // XK_KP_8, XK_KP_PAGE_UP
+        KeyboardKey::Keypad9 => if is_numlock_enabled{0xffb9} else {0xff9a},  // XK_KP_9, XK_KP_PRIOR
+        KeyboardKey::KeypadDecimal => if is_numlock_enabled{0xffae} else {0xff9f},  // XK_KP_Decimal, XK_KP_Delete
         KeyboardKey::KeypadMultiply => 0xffaa,  // XK_KP_Multiply
         KeyboardKey::KeypadPlus => 0xffab,  // XK_KP_Add
         KeyboardKey::KeypadClear => 0xff0b,  // XK_Clear
@@ -338,7 +339,7 @@ fn key_to_id(key: KeyboardKey) -> i32 {
         // Control keys
         KeyboardKey::Return => 0xff0d,        // XK_Return
         KeyboardKey::Tab => 0xff09,           // XK_Tab
-        KeyboardKey::Delete => 0xffff,        // XK_Delete
+        KeyboardKey::Delete => 0xff08,        // XK_backspace
         KeyboardKey::ForwardDelete => 0xffff,  // XK_Delete
         KeyboardKey::Escape => 0xff1b,        // XK_Escape
         KeyboardKey::Home => 0xff50,          // XK_Home
@@ -358,8 +359,8 @@ fn key_to_id(key: KeyboardKey) -> i32 {
         KeyboardKey::RightControl => 0xffe4, // XK_Control_R
         KeyboardKey::Option => 0xffe9,       // XK_Alt_L
         KeyboardKey::RightOption => 0xffea,  // XK_Alt_R
-        KeyboardKey::Command => 0xffe7,      // XK_Meta_L
-        KeyboardKey::RightCommand => 0xffe8, // XK_Meta_R
+        KeyboardKey::Command => 0xffeb,      // XK_Super_l
+        KeyboardKey::RightCommand => 0xffec, // XK_Super_R
         KeyboardKey::Function => 0xfd1e,     // Special function key
         KeyboardKey::CapsLock => 0xffe5,     // XK_Caps_Lock
 
