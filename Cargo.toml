@@ -42,6 +42,10 @@ wayland-client = "0.31.7"
 wayland-protocols = {version = "0.32.5", features = ["client"]}
 tempfile = "3.14.0"
 memmap2 = "0.9.5"
+# need an executor for zbus / ax
+some_executor = "0.4.0"
+atspi = {version = "0.24.0", features=[]}
+ampsc = "0.2.0"
 
 # wasm32
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -60,3 +64,6 @@ name = "main"
 runner = "wasm-server-runner"
 
 [dev-dependencies]
+
+[patch.crates-io]
+some_executor = {path = "../some_executor"}

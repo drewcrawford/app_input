@@ -25,6 +25,8 @@ use crate::keyboard::{Shared};
 use crate::mouse::linux::motion_event;
 use crate::mouse::sys::{axis_event, button_event, xdg_toplevel_configure_event};
 
+mod ax;
+
 struct KeyboardState {
     shareds: Vec<Weak<Shared>>
 }
@@ -210,7 +212,8 @@ pub fn wl_keyboard_event(serial: u32, time: u32, key: u32, state: u32, surface_i
         let down = state == 1;
         KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
             shared.set_key_state(key, down, surface_id.protocol_id() as *mut c_void)
-        })
+        });
+        ax::ax_press(key, down);
     }
     else {
         println!("Unknown key {key}");
@@ -412,6 +415,7 @@ impl KeyboardKey {
             124 => Some(KeyboardKey::JISYen),
             125 => Some(KeyboardKey::Command),
             126 => Some(KeyboardKey::RightCommand),
+            127 => Some(KeyboardKey::ContextMenu),
             //compose
             128 => Some(KeyboardKey::Stop),
             129 => Some(KeyboardKey::Again),
