@@ -106,7 +106,7 @@ pub fn button_event(_time: u32, button: u32, state: u32, window: ObjectId) {
         0x111 => 1, //BTN_RIGHT
         0x112 => 2, //BTN_MIDDLE
         0x113 => 3, //BTN_SIDE
-        0x114 => 4,//BTN_EXTRa
+        0x114 => 4,//BTN_EXTRA
         0x115 => 5, //BTN_FORWARD
         0x116 => 6, //BTN_BACK
         0x117 => 7, //BTN_TASK
