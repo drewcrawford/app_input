@@ -180,7 +180,7 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                      */
                     modifiers,
                     timestamp: start_time.elapsed().as_millis() as i32,
-                    event_string: key_to_name(key),
+                    event_string: key_to_name(key, is_numlock_enabled),
                     is_text: key_is_text_input(key),
                 };
                 println!("sending key event {:?}",device_event);
@@ -623,7 +623,7 @@ fn key_to_x11(key: KeyboardKey) -> i32 {
     }
 }
 
-fn key_to_name(key: KeyboardKey) -> &'static str {
+fn key_to_name(key: KeyboardKey, is_numlock_enabled: bool) -> &'static str {
     match key {
         // Letters - map to lowercase versions
         KeyboardKey::A => "a",
@@ -667,17 +667,17 @@ fn key_to_name(key: KeyboardKey) -> &'static str {
 
         // Special characters
         KeyboardKey::Space => "space",
-        KeyboardKey::Minus => "minus",
-        KeyboardKey::Equal => "equal",
-        KeyboardKey::LeftBracket => "bracketleft",
-        KeyboardKey::RightBracket => "bracketright",
-        KeyboardKey::Backslash => "backslash",
-        KeyboardKey::Semicolon => "semicolon",
-        KeyboardKey::Quote => "apostrophe",
-        KeyboardKey::Grave => "grave",
-        KeyboardKey::Comma => "comma",
-        KeyboardKey::Period => "period",
-        KeyboardKey::Slash => "slash",
+        KeyboardKey::Minus => "-",
+        KeyboardKey::Equal => "=",
+        KeyboardKey::LeftBracket => "[",
+        KeyboardKey::RightBracket => "]",
+        KeyboardKey::Backslash => "\\",
+        KeyboardKey::Semicolon => ";",
+        KeyboardKey::Quote => "'",
+        KeyboardKey::Grave => "`",
+        KeyboardKey::Comma => ",",
+        KeyboardKey::Period => ".",
+        KeyboardKey::Slash => "/",
 
         // Modifiers
         KeyboardKey::Shift => "Shift_L",
@@ -720,7 +720,7 @@ fn key_to_name(key: KeyboardKey) -> &'static str {
         // Navigation keys
         KeyboardKey::Return => "Return",
         KeyboardKey::Tab => "Tab",
-        KeyboardKey::Delete => "Delete",
+        KeyboardKey::Delete => "BackSpace",
         KeyboardKey::ForwardDelete => "Delete",
         KeyboardKey::Escape => "Escape",
         KeyboardKey::Home => "Home",
@@ -734,24 +734,24 @@ fn key_to_name(key: KeyboardKey) -> &'static str {
         KeyboardKey::Help => "Help",
 
         // Keypad
-        KeyboardKey::KeypadDecimal => "KP_Decimal",
-        KeyboardKey::KeypadMultiply => "KP_Multiply",
-        KeyboardKey::KeypadPlus => "KP_Add",
+        KeyboardKey::KeypadDecimal => if is_numlock_enabled { "." } else { "KP_Delete" },
+        KeyboardKey::KeypadMultiply => "*",
+        KeyboardKey::KeypadPlus => "+",
         KeyboardKey::KeypadClear => "Clear",
-        KeyboardKey::KeypadDivide => "KP_Divide",
+        KeyboardKey::KeypadDivide => "/",
         KeyboardKey::KeypadEnter => "KP_Enter",
-        KeyboardKey::KeypadMinus => "KP_Subtract",
-        KeyboardKey::KeypadEquals => "KP_Equal",
-        KeyboardKey::Keypad0 => "KP_0",
-        KeyboardKey::Keypad1 => "KP_1",
-        KeyboardKey::Keypad2 => "KP_2",
-        KeyboardKey::Keypad3 => "KP_3",
-        KeyboardKey::Keypad4 => "KP_4",
-        KeyboardKey::Keypad5 => "KP_5",
-        KeyboardKey::Keypad6 => "KP_6",
-        KeyboardKey::Keypad7 => "KP_7",
-        KeyboardKey::Keypad8 => "KP_8",
-        KeyboardKey::Keypad9 => "KP_9",
+        KeyboardKey::KeypadMinus => "-",
+        KeyboardKey::KeypadEquals => "=",
+        KeyboardKey::Keypad0 => if is_numlock_enabled { "0" } else { "KP_Insert" },
+        KeyboardKey::Keypad1 => if is_numlock_enabled { "1" } else { "KP_End" },
+        KeyboardKey::Keypad2 => if is_numlock_enabled { "2" } else { "KP_Down" },
+        KeyboardKey::Keypad3 => if is_numlock_enabled { "3" } else { "KP_Next" }, //Next is somewhat suspicious to me but matches Gnome Help
+        KeyboardKey::Keypad4 => if is_numlock_enabled { "4" } else { "KP_Left" },
+        KeyboardKey::Keypad5 => if is_numlock_enabled { "5" } else { "KP_Begin" },
+        KeyboardKey::Keypad6 => if is_numlock_enabled { "6" } else { "KP_Right" },
+        KeyboardKey::Keypad7 => if is_numlock_enabled { "7" } else { "KP_Home" },
+        KeyboardKey::Keypad8 => if is_numlock_enabled { "8" } else { "KP_Up" },
+        KeyboardKey::Keypad9 => if is_numlock_enabled { "9" } else { "KP_Page_Up" },
 
         // Lock keys
         KeyboardKey::NumLock => "Num_Lock",
