@@ -100,18 +100,18 @@ if __name__ == "__main__":
 use std::sync::OnceLock;
 use std::time::Instant;
 use ampsc::{ChannelConsumer, ChannelProducer};
-use atspi::proxy::device_event_controller::{DeviceEvent, DeviceEventControllerProxy, EventType, KeySynthType};
-use atspi::proxy::device_event_listener::DeviceEventListenerProxy;
+use atspi::events::mouse::{ButtonEvent};
+use atspi::proxy::device_event_controller::{DeviceEvent, DeviceEventControllerProxy, EventType};
 use some_executor::hint::Hint;
 use some_executor::{Priority, SomeExecutor};
-use some_executor::observer::Observer;
 use some_executor::task::{Configuration, Task};
 use crate::keyboard::key::KeyboardKey;
 
 static ONCE_SENDER: OnceLock<ChannelProducer<Event>> = OnceLock::new();
 
 enum Event {
-    Key(KeyboardKey, bool)
+    Key(KeyboardKey, bool),
+    Mouse(),
 }
 
 async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
@@ -183,9 +183,7 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                     event_string: key_to_name(key, is_numlock_enabled),
                     is_text: key_is_text_input(key),
                 };
-                println!("sending key event {:?}",device_event);
                 device.notify_listeners_sync(&device_event).await.expect("Failed to notify listeners");
-                println!("sent key event");
                 //update our modifiers AFTER sending event
                 if is_lock {
                     if late_toggle_off {
@@ -202,9 +200,20 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                 }
 
             }
+            Event::Mouse() => {
+                let event = ButtonEvent {
+                    item: Default::default(),
+                    detail: "".to_string(),
+                    mouse_x: 0,
+                    mouse_y: 0,
+                };
+                connection.send_event(event).await.expect("Can't send event");
+            }
         }
     }
-    receiver.async_drop().await;
+    #[allow(unreachable_code)]
+    unreachable!("ax_loop should never return");
+    //receiver.async_drop().await;
 
 }
 
@@ -231,6 +240,18 @@ pub fn ax_press(key: KeyboardKey, pressed: bool) {
     let o = ex.spawn_objsafe(t);
     std::mem::forget(o);
 
+}
+
+pub fn ax_mouse() {
+    let sender = ax_init();
+    let mut ex = some_executor::current_executor::current_executor();
+    let t = Task::without_notifications("linux ax".to_string(), async move {
+        let mut sender = sender;
+        sender.send(Event::Mouse()).await.expect("Failed to send event");
+        sender.async_drop().await;
+    }, Configuration::new(Hint::IO, Priority::UserInteractive, Instant::now())).into_objsafe();
+    let o = ex.spawn_objsafe(t);
+    std::mem::forget(o);
 }
 
 //evidently based on /usr/X11/include/keysymdef.h
