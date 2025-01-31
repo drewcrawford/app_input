@@ -19,6 +19,8 @@ app_input is a cross-platform library for receiving keyboard and mouse events.
         * We map hardware keys rather than unicode characters
         * If you are trying to implement text input, you have much work to do, including but not limited to the shift key
     * Keycodes are translated into a platform-independent enum that works everywhere
+    * On Linux, key events are broadcasted over ATSPI.  Due to some [questionable decisions in the Linux ecosystem](https://github.com/AccessKit/accesskit/discussions/503#discussioncomment-11862133)
+        this is required for screenreaders to work but nobody does it.  We do!
 
 
 # Supported platforms
