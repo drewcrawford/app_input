@@ -1,6 +1,6 @@
 [package]
 name = "app_input"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Drew Crawford <drew@sealedabstract.com>"]
 edition = "2021"
 description = "Cross-platform mouse and keyboard input"

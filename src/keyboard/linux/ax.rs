@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MPL-2.0
 /*
 Currently screenreaders have no access to keyboard/mouse events on wayland.  For more details see
 [this comment](https://github.com/AccessKit/accesskit/discussions/503#discussioncomment-11862133).
