@@ -33,4 +33,4 @@ app_input is a cross-platform library for receiving keyboard and mouse events.
 | Yours    | Send a PR!               |
 
 
-* `*`: Needs platform-native event integration before events are delivered
+* `*`: Needs platform-native event integration before events are delivered.  Consider using [app_window](https://sealedabstract.com/code/app_window)!

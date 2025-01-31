@@ -65,5 +65,3 @@ runner = "wasm-server-runner"
 
 [dev-dependencies]
 
-[patch.crates-io]
-some_executor = {path = "../some_executor"}
