@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MPL-2.0
-use std::ffi::c_void;
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
@@ -77,7 +76,7 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
             let y = get_y_lparam(l_param);
             let mut point = MaybeUninit::uninit();
             unsafe{ClientToScreen(hwnd, point.as_mut_ptr())}.expect("failed to get client to screen");
-            let point = unsafe{point.assume_init()};
+            // let point = unsafe{point.assume_init()};
 
             let mut rect = MaybeUninit::uninit();
             unsafe{GetClientRect(hwnd,rect.as_mut_ptr())}.expect("failed to get client rect");
