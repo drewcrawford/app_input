@@ -69,7 +69,7 @@ Call this to handle [wayland_client::protocol::wl_pointer::Event::Motion].
 
 Call this from your wayland dispatch queue.
 */
-pub fn motion_event(time: u32, surface_x: f64, surface_y: f64) {
+pub fn motion_event(_time: u32, surface_x: f64, surface_y: f64) {
     let mut lock = MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap();
     lock.recent_x_pos = Some(surface_x);
     lock.recent_y_pos = Some(surface_y);
@@ -93,7 +93,7 @@ Call this to handle wayland_client::protocol::wl_pointer::Event::Button.
 
 Call this from your wayland dispatch queue.
 */
-pub fn button_event(time: u32, button: u32, state: u32, window: ObjectId) {
+pub fn button_event(_time: u32, button: u32, state: u32, window: ObjectId) {
     let down = if state == 0 {
         false
     }
@@ -106,7 +106,7 @@ pub fn button_event(time: u32, button: u32, state: u32, window: ObjectId) {
         0x111 => 1, //BTN_RIGHT
         0x112 => 2, //BTN_MIDDLE
         0x113 => 3, //BTN_SIDE
-        0x114 => 4,//BTN_EXTRa
+        0x114 => 4,//BTN_EXTRA
         0x115 => 5, //BTN_FORWARD
         0x116 => 6, //BTN_BACK
         0x117 => 7, //BTN_TASK
@@ -120,7 +120,8 @@ pub fn button_event(time: u32, button: u32, state: u32, window: ObjectId) {
     };
     MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
         shared.set_key_state(btn_code, down, window.protocol_id() as *mut c_void);
-    })
+    });
+    crate::keyboard::linux::ax::ax_mouse();
 }
 
 pub fn axis_event(_time: u32, axis: u32, value: f64, window: ObjectId) {

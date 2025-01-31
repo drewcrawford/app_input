@@ -4,13 +4,13 @@ use std::fs::File;
 use std::os::fd::AsFd;
 use memmap2::MmapMut;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
-use wayland_client::{Connection, Dispatch, Proxy, QueueHandle, WEnum};
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_client::backend::ObjectId;
 use wayland_client::globals::{registry_queue_init, GlobalListContents};
 use wayland_client::protocol::{wl_compositor, wl_registry, wl_shm};
 use wayland_client::protocol::wl_buffer::WlBuffer;
 use wayland_client::protocol::wl_compositor::WlCompositor;
-use wayland_client::protocol::wl_keyboard::{KeyState, WlKeyboard};
+use wayland_client::protocol::wl_keyboard::{WlKeyboard};
 use wayland_client::protocol::wl_pointer::WlPointer;
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_shm::{Format, WlShm};
@@ -24,6 +24,8 @@ use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::{Shared};
 use crate::mouse::linux::motion_event;
 use crate::mouse::sys::{axis_event, button_event, xdg_toplevel_configure_event};
+
+pub(crate) mod ax;
 
 struct KeyboardState {
     shareds: Vec<Weak<Shared>>
@@ -205,12 +207,13 @@ impl Dispatch<WlPointer, ObjectId> for AppData {
 /**
 Call this from [WlKeyboard] dispatch for [wayland_client::protocol::wl_keyboard::Event::Key] event.
 */
-pub fn wl_keyboard_event(serial: u32, time: u32, key: u32, state: u32, surface_id: ObjectId) {
+pub fn wl_keyboard_event(_serial: u32, _time: u32, key: u32, state: u32, surface_id: ObjectId) {
     if let Some(key) = KeyboardKey::from_vk(key) {
         let down = state == 1;
         KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
             shared.set_key_state(key, down, surface_id.protocol_id() as *mut c_void)
-        })
+        });
+        ax::ax_press(key, down);
     }
     else {
         println!("Unknown key {key}");
@@ -398,7 +401,7 @@ impl KeyboardKey {
             108 => Some(KeyboardKey::DownArrow),
             109 => Some(KeyboardKey::PageDown),
             110 => Some(KeyboardKey::Insert),
-            111 => Some(KeyboardKey::Delete),
+            111 => Some(KeyboardKey::ForwardDelete),
             //macro
             113 => Some(KeyboardKey::Mute),
             114 => Some(KeyboardKey::VolumeDown),
@@ -412,6 +415,7 @@ impl KeyboardKey {
             124 => Some(KeyboardKey::JISYen),
             125 => Some(KeyboardKey::Command),
             126 => Some(KeyboardKey::RightCommand),
+            127 => Some(KeyboardKey::ContextMenu),
             //compose
             128 => Some(KeyboardKey::Stop),
             129 => Some(KeyboardKey::Again),
