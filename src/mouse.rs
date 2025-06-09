@@ -124,6 +124,7 @@ impl Mouse {
         Mouse{shared, _sys: coalesced}
     }
 
+    #[allow(rustdoc::broken_intra_doc_links)] //references to the platform-specific code
     /**
     Returns the [MouseWindowLocation]
 

@@ -86,6 +86,7 @@ impl Keyboard {
         }
     }
 
+    #[allow(rustdoc::broken_intra_doc_links)]
     /**
     Determines if the key provided is pressed.
 
