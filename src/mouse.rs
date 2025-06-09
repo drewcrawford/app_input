@@ -35,7 +35,7 @@ use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 ///
 /// ```
 /// use app_input::mouse::{Mouse, MOUSE_BUTTON_LEFT};
-/// 
+///
 /// let mouse = Mouse::coalesced();
 /// let left_pressed = mouse.button_state(MOUSE_BUTTON_LEFT);
 /// ```
@@ -47,7 +47,7 @@ pub const MOUSE_BUTTON_LEFT: u8 = 0;
 ///
 /// ```
 /// use app_input::mouse::{Mouse, MOUSE_BUTTON_RIGHT};
-/// 
+///
 /// let mouse = Mouse::coalesced();
 /// let right_pressed = mouse.button_state(MOUSE_BUTTON_RIGHT);
 /// ```
@@ -59,7 +59,7 @@ pub const MOUSE_BUTTON_RIGHT: u8 = 1;
 ///
 /// ```
 /// use app_input::mouse::{Mouse, MOUSE_BUTTON_MIDDLE};
-/// 
+///
 /// let mouse = Mouse::coalesced();
 /// let middle_pressed = mouse.button_state(MOUSE_BUTTON_MIDDLE);
 /// ```
@@ -74,7 +74,7 @@ pub const MOUSE_BUTTON_MIDDLE: u8 = 2;
 ///
 /// ```
 /// use app_input::mouse::Mouse;
-/// 
+///
 /// let mouse = Mouse::coalesced();
 /// if let Some(location) = mouse.window_pos() {
 ///     println!("Mouse at ({}, {})", location.pos_x(), location.pos_y());
@@ -124,7 +124,7 @@ impl MouseWindowLocation {
     pub fn pos_x(&self) -> f64 {
         self.pos_x
     }
-    
+
     /// Returns the Y coordinate of the mouse position within the window.
     ///
     /// The Y coordinate is measured from the top edge of the window.
@@ -142,7 +142,7 @@ impl MouseWindowLocation {
     pub fn pos_y(&self) -> f64 {
         self.pos_y
     }
-    
+
     /// Returns the width of the window containing the mouse.
     ///
     /// # Examples
@@ -158,7 +158,7 @@ impl MouseWindowLocation {
     pub fn window_width(&self) -> f64 {
         self.window_width
     }
-    
+
     /// Returns the height of the window containing the mouse.
     ///
     /// # Examples
@@ -246,12 +246,12 @@ impl Shared {
 /// use app_input::mouse::{Mouse, MOUSE_BUTTON_LEFT};
 ///
 /// let mouse = Mouse::coalesced();
-/// 
+///
 /// // Check if left button is pressed
 /// if mouse.button_state(MOUSE_BUTTON_LEFT) {
 ///     println!("Left button is pressed");
 /// }
-/// 
+///
 /// // Get mouse position
 /// if let Some(pos) = mouse.window_pos() {
 ///     println!("Mouse at ({}, {})", pos.pos_x(), pos.pos_y());
@@ -328,11 +328,11 @@ impl Mouse {
     /// use app_input::mouse::{Mouse, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT};
     ///
     /// let mouse = Mouse::coalesced();
-    /// 
+    ///
     /// if mouse.button_state(MOUSE_BUTTON_LEFT) {
     ///     println!("Left button is pressed");
     /// }
-    /// 
+    ///
     /// if mouse.button_state(MOUSE_BUTTON_RIGHT) {
     ///     println!("Right button is pressed");
     /// }
@@ -358,7 +358,7 @@ impl Mouse {
     /// use app_input::mouse::Mouse;
     ///
     /// let mut mouse = Mouse::coalesced();
-    /// 
+    ///
     /// // In your update loop:
     /// let (scroll_x, scroll_y) = mouse.load_clear_scroll_delta();
     /// if scroll_y != 0.0 {

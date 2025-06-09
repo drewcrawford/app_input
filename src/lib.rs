@@ -48,19 +48,19 @@ pub mod keyboard;
 pub mod mouse;
 
 /// Shows a debug window for testing keyboard input (macOS only).
-/// 
+///
 /// This function displays a native window that can be used to test keyboard input
 /// without interference from other applications. Useful for debugging keyboard event handling.
-/// 
+///
 /// # Platform availability
 /// - Currently only implemented on macOS
 /// - No-op on other platforms
 pub use keyboard::sys::debug_window_show;
 
 /// Hides the debug window (macOS only).
-/// 
+///
 /// Closes the debug window that was previously shown with `debug_window_show()`.
-/// 
+///
 /// # Platform availability
 /// - Currently only implemented on macOS
 /// - No-op on other platforms
