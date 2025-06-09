@@ -1,12 +1,41 @@
 // SPDX-License-Identifier: MPL-2.0
+
+//! Cross-platform keyboard input handling.
+//!
+//! This module provides a high-level interface for detecting keyboard key states across
+//! different platforms (Windows, macOS, Linux, and WASM). The keyboard state is tracked
+//! globally, allowing you to check if any key is currently pressed.
+//!
+//! # Architecture
+//!
+//! The module uses platform-specific implementations (in submodules) to capture raw
+//! keyboard events and translate them into a unified `KeyboardKey` enum. All keyboards
+//! connected to the system are coalesced into a single logical keyboard.
+//!
+//! # Example
+//!
+//! ```
+//! use app_input::keyboard::{Keyboard, key::KeyboardKey};
+//!
+//! let keyboard = Keyboard::coalesced();
+//!
+//! // Initially, keys are not pressed
+//! assert_eq!(keyboard.is_pressed(KeyboardKey::A), false);
+//! assert_eq!(keyboard.is_pressed(KeyboardKey::Shift), false);
+//! ```
+//!
+//! # Platform Requirements
+//!
+//! - **Windows**: Call `window_proc` from your window procedure  
+//! - **Linux**: Call `wl_keyboard_event` from your Wayland dispatch queue
+//! - **macOS** and **WASM**: No special integration required
+
 use std::ffi::c_void;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicPtr};
 
-/**
-keys on the keyboard
-*/
+/// Keyboard key definitions and enumerations.
 pub mod key;
 
 #[cfg(target_os = "macos")]
@@ -36,9 +65,17 @@ pub(crate) use linux as sys;
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
 
+/// Internal shared state for keyboard tracking.
+///
+/// This struct is shared between the public `Keyboard` API and the platform-specific
+/// implementations. It maintains the current state of all keyboard keys using atomic
+/// operations for thread safety.
 #[derive(Debug)]
 struct Shared {
+    /// Array of atomic booleans tracking the pressed state of each key.
+    /// Indexed by the numeric value of `KeyboardKey`.
     key_states: Vec<AtomicBool>,
+    /// Platform-specific window pointer that received the most recent keyboard event.
     window_ptr: AtomicPtr<c_void>,
 }
 
@@ -66,6 +103,32 @@ impl Shared {
     }
 }
 
+/// A cross-platform keyboard input handler.
+///
+/// `Keyboard` provides a unified interface for detecting keyboard key states across
+/// different platforms. It represents all physical keyboards connected to the system
+/// as a single logical keyboard.
+///
+/// # Thread Safety
+///
+/// `Keyboard` is `Send + Sync` and can be safely shared between threads. Key state
+/// queries are lock-free and use atomic operations internally.
+///
+/// # Example
+///
+/// ```
+/// use app_input::keyboard::{Keyboard, key::KeyboardKey};
+///
+/// let keyboard = Keyboard::coalesced();
+///
+/// // Check various key states
+/// let is_a_pressed = keyboard.is_pressed(KeyboardKey::A);
+/// let is_shift_pressed = keyboard.is_pressed(KeyboardKey::Shift);
+/// let is_escape_pressed = keyboard.is_pressed(KeyboardKey::Escape);
+///
+/// // Keys start in unpressed state
+/// assert_eq!(is_a_pressed, false);
+/// ```
 #[derive(Debug)]
 pub struct Keyboard {
     shared: Arc<Shared>,
@@ -73,9 +136,19 @@ pub struct Keyboard {
 }
 
 impl Keyboard {
-    /**
-    Create a keyboard representing all coalesced keyboards on the system.
-    */
+    /// Creates a keyboard instance representing all physical keyboards on the system.
+    ///
+    /// This constructor creates a single logical keyboard that coalesces input from all
+    /// connected physical keyboards. This is typically what you want for most applications.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use app_input::keyboard::Keyboard;
+    ///
+    /// let keyboard = Keyboard::coalesced();
+    /// // The keyboard is now ready to track key states
+    /// ```
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
         let _platform_coalesced_keyboard = PlatformCoalescedKeyboard::new(&shared);
@@ -85,17 +158,40 @@ impl Keyboard {
         }
     }
 
-    #[allow(rustdoc::broken_intra_doc_links)]
-    /**
-    Determines if the key provided is pressed.
-
-    # Platform specifics
-
-    * macOS and wasm require no special considerations.
-    * On windows, you must call [crate::window_proc] from your window.
-    * On Linux,you must call [crate::linux::wl_keyboard_event] from your Wayland dispatch queue.
-
-    */
+    /// Checks if the specified key is currently pressed.
+    ///
+    /// Returns `true` if the key is currently held down, `false` otherwise.
+    /// This method uses atomic operations and is safe to call from any thread.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The keyboard key to check
+    ///
+    /// # Platform specifics
+    ///
+    /// * **macOS** and **WASM**: No special considerations required
+    /// * **Windows**: You must call `window_proc` from your window procedure
+    /// * **Linux**: You must call `wl_keyboard_event` from your Wayland dispatch queue
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use app_input::keyboard::{Keyboard, key::KeyboardKey};
+    ///
+    /// let keyboard = Keyboard::coalesced();
+    ///
+    /// // Check if specific keys are pressed
+    /// if keyboard.is_pressed(KeyboardKey::Space) {
+    ///     // Handle space key
+    /// }
+    ///
+    /// // Check multiple keys for combinations
+    /// let ctrl_pressed = keyboard.is_pressed(KeyboardKey::Control);
+    /// let s_pressed = keyboard.is_pressed(KeyboardKey::S);
+    /// if ctrl_pressed && s_pressed {
+    ///     // Handle Ctrl+S
+    /// }
+    /// ```
     pub fn is_pressed(&self, key: KeyboardKey) -> bool {
         self.shared.key_states[key as usize].load(std::sync::atomic::Ordering::Relaxed)
     }
@@ -118,9 +214,16 @@ impl Hash for Keyboard {
 }
 
 impl Default for Keyboard {
-    /**
-    The coalesced keyboard
-    */
+    /// Creates a default keyboard instance using [`Keyboard::coalesced()`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use app_input::keyboard::Keyboard;
+    ///
+    /// let keyboard = Keyboard::default();
+    /// // Equivalent to Keyboard::coalesced()
+    /// ```
     fn default() -> Self {
         Self::coalesced()
     }
