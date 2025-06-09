@@ -29,15 +29,58 @@ use atomic_float::AtomicF64;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 
+/// Mouse button constant for the left mouse button.
+///
+/// # Examples
+///
+/// ```
+/// use app_input::mouse::{Mouse, MOUSE_BUTTON_LEFT};
+///
+/// let mouse = Mouse::coalesced();
+/// let left_pressed = mouse.button_state(MOUSE_BUTTON_LEFT);
+/// ```
 pub const MOUSE_BUTTON_LEFT: u8 = 0;
+
+/// Mouse button constant for the right mouse button.
+///
+/// # Examples
+///
+/// ```
+/// use app_input::mouse::{Mouse, MOUSE_BUTTON_RIGHT};
+///
+/// let mouse = Mouse::coalesced();
+/// let right_pressed = mouse.button_state(MOUSE_BUTTON_RIGHT);
+/// ```
 pub const MOUSE_BUTTON_RIGHT: u8 = 1;
+
+/// Mouse button constant for the middle mouse button (wheel button).
+///
+/// # Examples
+///
+/// ```
+/// use app_input::mouse::{Mouse, MOUSE_BUTTON_MIDDLE};
+///
+/// let mouse = Mouse::coalesced();
+/// let middle_pressed = mouse.button_state(MOUSE_BUTTON_MIDDLE);
+/// ```
 pub const MOUSE_BUTTON_MIDDLE: u8 = 2;
 
-/**
-Mouse's location in the window, in points.
-
-Origin at the upper-left.
-*/
+/// Mouse's location within a window, in points.
+///
+/// The coordinate system has its origin at the upper-left corner of the window.
+/// The position is reported in logical points, not physical pixels.
+///
+/// # Examples
+///
+/// ```
+/// use app_input::mouse::Mouse;
+///
+/// let mouse = Mouse::coalesced();
+/// if let Some(location) = mouse.window_pos() {
+///     println!("Mouse at ({}, {})", location.pos_x(), location.pos_y());
+///     println!("Window size: {}x{}", location.window_width(), location.window_height());
+/// }
+/// ```
 #[derive(Debug, Clone, Copy)]
 pub struct MouseWindowLocation {
     pos_x: f64,
@@ -64,15 +107,70 @@ impl MouseWindowLocation {
         }
     }
 
+    /// Returns the X coordinate of the mouse position within the window.
+    ///
+    /// The X coordinate is measured from the left edge of the window.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use app_input::mouse::Mouse;
+    /// # let mouse = Mouse::coalesced();
+    /// if let Some(location) = mouse.window_pos() {
+    ///     let x = location.pos_x();
+    ///     println!("Mouse X: {}", x);
+    /// }
+    /// ```
     pub fn pos_x(&self) -> f64 {
         self.pos_x
     }
+
+    /// Returns the Y coordinate of the mouse position within the window.
+    ///
+    /// The Y coordinate is measured from the top edge of the window.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use app_input::mouse::Mouse;
+    /// # let mouse = Mouse::coalesced();
+    /// if let Some(location) = mouse.window_pos() {
+    ///     let y = location.pos_y();
+    ///     println!("Mouse Y: {}", y);
+    /// }
+    /// ```
     pub fn pos_y(&self) -> f64 {
         self.pos_y
     }
+
+    /// Returns the width of the window containing the mouse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use app_input::mouse::Mouse;
+    /// # let mouse = Mouse::coalesced();
+    /// if let Some(location) = mouse.window_pos() {
+    ///     let width = location.window_width();
+    ///     println!("Window width: {}", width);
+    /// }
+    /// ```
     pub fn window_width(&self) -> f64 {
         self.window_width
     }
+
+    /// Returns the height of the window containing the mouse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use app_input::mouse::Mouse;
+    /// # let mouse = Mouse::coalesced();
+    /// if let Some(location) = mouse.window_pos() {
+    ///     let height = location.window_height();
+    ///     println!("Window height: {}", height);
+    /// }
+    /// ```
     pub fn window_height(&self) -> f64 {
         self.window_height
     }
@@ -134,6 +232,38 @@ impl Shared {
     }
 }
 
+/// Provides access to mouse input from all mice on the system.
+///
+/// This type coalesces input from all connected mice into a single interface.
+/// It provides access to:
+/// - Mouse position within windows
+/// - Button states (left, right, middle, and others)
+/// - Accumulated scroll deltas
+///
+/// # Examples
+///
+/// ```
+/// use app_input::mouse::{Mouse, MOUSE_BUTTON_LEFT};
+///
+/// let mouse = Mouse::coalesced();
+///
+/// // Check if left button is pressed
+/// if mouse.button_state(MOUSE_BUTTON_LEFT) {
+///     println!("Left button is pressed");
+/// }
+///
+/// // Get mouse position
+/// if let Some(pos) = mouse.window_pos() {
+///     println!("Mouse at ({}, {})", pos.pos_x(), pos.pos_y());
+/// }
+/// ```
+///
+/// # Platform-specific behavior
+///
+/// Different platforms require different integration:
+/// - **macOS** and **wasm**: Work out of the box
+/// - **Windows**: You must call `window_proc` from your window procedure
+/// - **Linux**: You must call the appropriate wayland event handlers
 #[derive(Debug)]
 pub struct Mouse {
     shared: Arc<Shared>,
@@ -141,9 +271,19 @@ pub struct Mouse {
 }
 
 impl Mouse {
-    /**
-        Returns an object that coalesces input from all mice on the system.
-    */
+    /// Creates a new `Mouse` instance that coalesces input from all mice on the system.
+    ///
+    /// This is the primary way to create a `Mouse` instance. The returned object
+    /// will aggregate input from all connected mice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use app_input::mouse::Mouse;
+    ///
+    /// let mouse = Mouse::coalesced();
+    /// // Now you can query mouse state
+    /// ```
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
         let coalesced = sys::PlatformCoalescedMouse::new(&shared);
@@ -170,18 +310,61 @@ impl Mouse {
         *self.shared.window.lock().unwrap()
     }
 
-    /**
-    Determines if the mouse button specified is down or not.
-
-    * button: Pass a value like [MOUSE_BUTTON_LEFT].  Unspecified buttons may be supported on a best-effort basis.
-    */
+    /// Determines if the specified mouse button is currently pressed.
+    ///
+    /// # Arguments
+    ///
+    /// * `button` - The button to check. Use constants like [`MOUSE_BUTTON_LEFT`],
+    ///   [`MOUSE_BUTTON_RIGHT`], or [`MOUSE_BUTTON_MIDDLE`]. Other button values
+    ///   (e.g., for mice with additional buttons) may be supported on a best-effort basis.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the button is currently pressed, `false` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use app_input::mouse::{Mouse, MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT};
+    ///
+    /// let mouse = Mouse::coalesced();
+    ///
+    /// if mouse.button_state(MOUSE_BUTTON_LEFT) {
+    ///     println!("Left button is pressed");
+    /// }
+    ///
+    /// if mouse.button_state(MOUSE_BUTTON_RIGHT) {
+    ///     println!("Right button is pressed");
+    /// }
+    /// ```
     pub fn button_state(&self, button: u8) -> bool {
         self.shared.buttons[button as usize].load(Ordering::Relaxed)
     }
 
-    /**
-    Access the accumulated scroll delta, resetting the accumulated delta to 0
-    */
+    /// Returns the accumulated scroll delta and resets it to zero.
+    ///
+    /// This method is useful for implementing scroll handling in your application.
+    /// The scroll delta accumulates between calls, so you should call this
+    /// periodically (e.g., once per frame) to process scroll events.
+    ///
+    /// # Returns
+    ///
+    /// A tuple `(delta_x, delta_y)` containing the horizontal and vertical
+    /// scroll amounts since the last call to this method.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use app_input::mouse::Mouse;
+    ///
+    /// let mut mouse = Mouse::coalesced();
+    ///
+    /// // In your update loop:
+    /// let (scroll_x, scroll_y) = mouse.load_clear_scroll_delta();
+    /// if scroll_y != 0.0 {
+    ///     println!("Scrolled vertically by {}", scroll_y);
+    /// }
+    /// ```
     pub fn load_clear_scroll_delta(&mut self) -> (f64, f64) {
         let x = self.shared.scroll_delta_x.swap(0.0, Ordering::Relaxed);
         let y = self.shared.scroll_delta_y.swap(0.0, Ordering::Relaxed);
@@ -204,7 +387,16 @@ impl Hash for Mouse {
 }
 
 impl Default for Mouse {
-    ///The coalesced mouse.
+    /// Creates a default `Mouse` instance using [`Mouse::coalesced()`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use app_input::mouse::Mouse;
+    ///
+    /// let mouse = Mouse::default();
+    /// // Equivalent to Mouse::coalesced()
+    /// ```
     fn default() -> Self {
         Mouse::coalesced()
     }

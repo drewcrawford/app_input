@@ -36,13 +36,35 @@ app_input is a cross-platform library for receiving keyboard and mouse events.
 
 * `*`: Needs platform-native event integration before events are delivered.  Consider using [app_window](https://sealedabstract.com/code/app_window)!
 
+# WASM/JavaScript Support
+
+This library is also available as an npm package for JavaScript/TypeScript projects targeting WebAssembly.
+The package provides type definitions and can be used in web applications.
+
 */
 ///Provides information about keyboard events.
 pub mod keyboard;
 ///Provides information about mouse events.
 pub mod mouse;
 
-pub use keyboard::sys::{debug_window_hide, debug_window_show};
+/// Shows a debug window for testing keyboard input (macOS only).
+///
+/// This function displays a native window that can be used to test keyboard input
+/// without interference from other applications. Useful for debugging keyboard event handling.
+///
+/// # Platform availability
+/// - Currently only implemented on macOS
+/// - No-op on other platforms
+pub use keyboard::sys::debug_window_show;
+
+/// Hides the debug window (macOS only).
+///
+/// Closes the debug window that was previously shown with `debug_window_show()`.
+///
+/// # Platform availability
+/// - Currently only implemented on macOS
+/// - No-op on other platforms
+pub use keyboard::sys::debug_window_hide;
 
 /**
 Provides information about the window an event was delivered to.

@@ -129,7 +129,7 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
     };
 
     let start_time = Instant::now();
-    let device = DeviceEventControllerProxy::new(&connection.connection())
+    let device = DeviceEventControllerProxy::new(connection.connection())
         .await
         .expect("No device event controller proxy");
 
@@ -222,8 +222,6 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
             }
         }
     }
-    unreachable!("ax_loop should never return");
-    //receiver.async_drop().await;
 }
 
 fn ax_init() -> ChannelProducer<Event> {
