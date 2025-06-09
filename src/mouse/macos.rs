@@ -16,7 +16,7 @@ unsafe impl Sync for PlatformCoalescedMouse {}
 
 #[unsafe(no_mangle)]
 extern "C" fn raw_input_finish_mouse_event_context(ctx: *mut c_void) {
-    let _weak = unsafe { Weak::from_raw(ctx) };
+    let _weak = unsafe { Weak::from_raw(ctx as *const Shared) };
 }
 
 #[unsafe(no_mangle)]
