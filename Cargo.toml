@@ -28,7 +28,7 @@ swift-rs = { version = "1.0.7", features = ["build"] }
 
 # windows
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = {version = "0.59.0", features = [
+windows = {version = "0.61.1", features = [
  "Win32_Foundation",
  "Win32_UI_WindowsAndMessaging",
  "Win32_System_LibraryLoader",
@@ -44,7 +44,7 @@ tempfile = "3.14.0"
 memmap2 = "0.9.5"
 # need an executor for zbus / ax
 some_executor = "0.4.0"
-atspi = {version = "0.24.0", features=[]}
+atspi = {version = "0.26.3", features=[]}
 ampsc = "0.2.0"
 
 # wasm32
