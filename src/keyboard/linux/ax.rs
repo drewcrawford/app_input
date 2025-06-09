@@ -222,7 +222,6 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
             }
         }
     }
-    #[allow(unreachable_code)]
     unreachable!("ax_loop should never return");
     //receiver.async_drop().await;
 }
