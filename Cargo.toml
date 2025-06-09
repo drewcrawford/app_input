@@ -2,7 +2,7 @@
 name = "app_input"
 version = "0.1.1"
 authors = ["Drew Crawford <drew@sealedabstract.com>"]
-edition = "2021"
+edition = "2024"
 description = "Cross-platform mouse and keyboard input"
 homepage = "https://sealedabstract.com/code/app_input"
 repository = "https://github.com/drewcrawford/app_input"
@@ -10,7 +10,7 @@ keywords = ["mouse","keyboard","input"]
 categories = ["gui","hardware-support","os","wasm"]
 license = "MPL-2.0"
 exclude = [".*"]
-rust-version = "1.79.0"
+#rust-version = "1.79.0"
 
 
 [dependencies]

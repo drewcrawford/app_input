@@ -14,12 +14,12 @@ pub(super) struct PlatformCoalescedMouse {
 unsafe impl Send for PlatformCoalescedMouse {}
 unsafe impl Sync for PlatformCoalescedMouse {}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn raw_input_finish_mouse_event_context(ctx: *mut c_void) {
     let _weak = unsafe { Weak::from_raw(ctx) };
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn raw_input_mouse_move(ctx: *const c_void, window: *mut c_void, window_pos_x: f64, window_pos_y: f64, window_width: f64, window_height: f64) {
     let weak = unsafe { Weak::from_raw(ctx as *const Shared) };
     if let Some(shared) = weak.upgrade() {
@@ -32,7 +32,7 @@ extern "C" fn raw_input_mouse_move(ctx: *const c_void, window: *mut c_void, wind
     std::mem::forget(weak);
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn raw_input_mouse_button(ctx: *const c_void, window: *mut c_void, button: u8, down: bool) {
     let weak = unsafe { Weak::from_raw(ctx as *const Shared) };
     if let Some(shared) = weak.upgrade() {
@@ -42,7 +42,7 @@ extern "C" fn raw_input_mouse_button(ctx: *const c_void, window: *mut c_void, bu
 
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn raw_input_mouse_scroll(ctx: *const c_void, window: *mut c_void, delta_x: f64, delta_y: f64) {
     let weak = unsafe { Weak::from_raw(ctx as *const Shared)};
     if let Some(shared) = weak.upgrade() {
@@ -53,7 +53,7 @@ extern "C" fn raw_input_mouse_scroll(ctx: *const c_void, window: *mut c_void, de
 
 
 
-extern "C" {
+unsafe extern "C" {
     fn PlatformCoalescedMouseNew(ctx: *const c_void) -> *mut c_void;
     fn PlatformCoalescedMouseFree(imp: *mut c_void);
 }
