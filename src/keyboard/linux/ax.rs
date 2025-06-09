@@ -222,8 +222,6 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
             }
         }
     }
-    unreachable!("ax_loop should never return");
-    //receiver.async_drop().await;
 }
 
 fn ax_init() -> ChannelProducer<Event> {
