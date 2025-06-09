@@ -44,7 +44,7 @@ tempfile = "3.14.0"
 memmap2 = "0.9.5"
 # need an executor for zbus / ax
 some_executor = "0.4.0"
-atspi = {version = "0.26.3", features=[]}
+atspi = {version = "0.27", features=[]}
 ampsc = "0.2.0"
 
 # wasm32
