@@ -39,7 +39,7 @@ impl KeyboardState {
         KeyboardState { shared: Vec::new() }
     }
 
-    fn apply_all<F: Fn(&Shared) -> ()>(&mut self, f: F) {
+    fn apply_all<F: Fn(&Shared)>(&mut self, f: F) {
         self.shared.retain(|shared| {
             if let Some(shared) = shared.upgrade() {
                 f(&shared);
@@ -121,7 +121,7 @@ extern "system" fn debug_window_proc(
 ) -> LRESULT {
     println!("got msg hwnd {hwnd:?} msg {msg} w_param {w_param:?} l_param {l_param:?}");
     if crate::window_proc(hwnd, msg, w_param, l_param) == LRESULT(0) {
-        return LRESULT(0);
+        LRESULT(0)
     } else {
         unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) }
     }
