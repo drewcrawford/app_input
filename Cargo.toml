@@ -1,6 +1,6 @@
 [package]
 name = "app_input"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Drew Crawford <drew@sealedabstract.com>"]
 edition = "2024"
 description = "Cross-platform mouse and keyboard input"
@@ -10,7 +10,7 @@ keywords = ["mouse","keyboard","input"]
 categories = ["gui","hardware-support","os","wasm"]
 license = "MPL-2.0"
 exclude = [".*"]
-#rust-version = "1.79.0"
+rust-version = "1.85.1"
 
 
 [dependencies]
