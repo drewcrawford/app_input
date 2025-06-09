@@ -129,7 +129,7 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
     };
 
     let start_time = Instant::now();
-    let device = DeviceEventControllerProxy::new(&connection.connection())
+    let device = DeviceEventControllerProxy::new(connection.connection())
         .await
         .expect("No device event controller proxy");
 

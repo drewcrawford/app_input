@@ -27,18 +27,12 @@ use wayland_protocols::xdg::shell::client::xdg_wm_base::{Event, XdgWmBase};
 
 pub(crate) mod ax;
 
+#[derive(Default)]
 struct KeyboardState {
     shareds: Vec<Weak<Shared>>,
 }
-impl Default for KeyboardState {
-    fn default() -> Self {
-        KeyboardState {
-            shareds: Vec::new(),
-        }
-    }
-}
 impl KeyboardState {
-    fn apply_all<F: Fn(&Shared) -> ()>(&mut self, f: F) {
+    fn apply_all<F: Fn(&Shared)>(&mut self, f: F) {
         self.shareds.retain(|shared| {
             if let Some(shared) = shared.upgrade() {
                 f(&shared);

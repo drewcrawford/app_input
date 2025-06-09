@@ -9,6 +9,7 @@ use wayland_client::backend::ObjectId;
 #[derive(Debug)]
 pub(super) struct PlatformCoalescedMouse {}
 
+#[derive(Default)]
 struct MouseState {
     shareds: Vec<Weak<Shared>>,
     recent_x_pos: Option<f64>,
@@ -17,21 +18,9 @@ struct MouseState {
     recent_window_height: Option<i32>,
     recent_window: Option<ObjectId>,
 }
-impl Default for MouseState {
-    fn default() -> Self {
-        MouseState {
-            shareds: Vec::new(),
-            recent_x_pos: None,
-            recent_y_pos: None,
-            recent_window_width: None,
-            recent_window_height: None,
-            recent_window: None,
-        }
-    }
-}
 
 impl MouseState {
-    fn apply_all<F: Fn(&Shared) -> ()>(&mut self, f: F) {
+    fn apply_all<F: Fn(&Shared)>(&mut self, f: F) {
         self.shareds.retain(|shared| {
             if let Some(shared) = shared.upgrade() {
                 f(&shared);
@@ -55,10 +44,7 @@ impl MouseState {
         ) {
             let window = match self.recent_window.as_ref() {
                 None => None,
-                Some(object_id) => match NonNull::new(object_id.protocol_id() as *mut c_void) {
-                    Some(non_null) => Some(Window(non_null)),
-                    None => None,
-                },
+                Some(object_id) => NonNull::new(object_id.protocol_id() as *mut c_void).map(Window),
             };
             let pos = MouseWindowLocation::new(
                 recent_x_pos,
@@ -104,7 +90,7 @@ Call this to handle wayland_client::protocol::wl_pointer::Event::Button.
 Call this from your wayland dispatch queue.
 */
 pub fn button_event(_time: u32, button: u32, state: u32, window: ObjectId) {
-    let down = if state == 0 { false } else { true };
+    let down = state != 0;
     //see https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
     let btn_code = match button {
         0x110 => 0, //BTN_LEFT
