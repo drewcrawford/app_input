@@ -167,7 +167,7 @@ impl Mouse {
             * [crate::mouse::linux::xdg_toplevel_configure_event]
     */
     pub fn window_pos(&self) -> Option<MouseWindowLocation> {
-        self.shared.window.lock().unwrap().clone()
+        *self.shared.window.lock().unwrap()
     }
 
     /**
