@@ -75,10 +75,7 @@ If we processed the message, returns LRESULT(0).  Otherwise returns non-zero.
 pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     match msg {
         msg if msg == WM_MOUSEMOVE => {
-            let window = match NonNull::new(hwnd.0) {
-                None => None,
-                Some(non_null) => Some(Window(non_null)),
-            };
+            let window = NonNull::new(hwnd.0).map(Window);
             let x = get_x_lparam(l_param);
             let y = get_y_lparam(l_param);
             let mut point = MaybeUninit::uninit();
