@@ -42,7 +42,7 @@ pub mod keyboard;
 ///Provides information about mouse events.
 pub mod mouse;
 
-pub use keyboard::sys::{debug_window_show, debug_window_hide};
+pub use keyboard::sys::{debug_window_hide, debug_window_show};
 
 /**
 Provides information about the window an event was delivered to.
@@ -58,23 +58,21 @@ pub struct Window(pub std::ptr::NonNull<std::ffi::c_void>);
 //we don't do anything with it so it's fine to send
 unsafe impl Send for Window {}
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 pub mod linux {
     pub use crate::keyboard::linux::wl_keyboard_event;
-    pub use crate::mouse::linux::{motion_event, button_event, xdg_toplevel_configure_event};
+    pub use crate::mouse::linux::{button_event, motion_event, xdg_toplevel_configure_event};
 }
 
 #[cfg(target_os = "windows")]
-use windows::Win32::Foundation::{HWND, LRESULT,WPARAM, LPARAM};
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 #[cfg(target_os = "windows")]
 pub fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
     if mouse::windows::window_proc(hwnd, msg, w_param, l_param) == LRESULT(0) {
         LRESULT(0)
-    }
-    else if keyboard::windows::kbd_window_proc(hwnd, msg, w_param, l_param) == LRESULT(0) {
+    } else if keyboard::windows::kbd_window_proc(hwnd, msg, w_param, l_param) == LRESULT(0) {
         LRESULT(0)
-    }
-    else {
+    } else {
         LRESULT(1)
     }
 }

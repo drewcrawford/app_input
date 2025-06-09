@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 use app_input::keyboard::Keyboard;
-use app_input::{debug_window_show, debug_window_hide};
 use app_input::mouse::Mouse;
+use app_input::{debug_window_hide, debug_window_show};
 
 fn test_board() {
     #[cfg(target_arch = "wasm32")]
@@ -12,7 +12,8 @@ fn test_board() {
     debug_window_hide();
 
     //on wasm32 this thread completes
-    #[cfg(target_arch="wasm32")] {
+    #[cfg(target_arch = "wasm32")]
+    {
         std::mem::forget(_k);
         std::mem::forget(_m);
     }

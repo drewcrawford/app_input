@@ -1,14 +1,33 @@
 // SPDX-License-Identifier: MPL-2.0
+use crate::keyboard::Shared;
+use crate::keyboard::key::KeyboardKey;
 use std::ffi::c_void;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
-use windows::core::{w, PCWSTR};
-use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM, GetLastError};
+use windows::Win32::Foundation::{GetLastError, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{COLOR_WINDOW, HBRUSH};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows::Win32::UI::Input::KeyboardAndMouse::{VK_ADD, VK_APPS, VK_BACK, VK_BROWSER_BACK, VK_BROWSER_FAVORITES, VK_BROWSER_FORWARD, VK_BROWSER_HOME, VK_BROWSER_REFRESH, VK_BROWSER_SEARCH, VK_BROWSER_STOP, VK_CAPITAL, VK_CLEAR, VK_CONTROL, VK_CONVERT, VK_DECIMAL, VK_DELETE, VK_DIVIDE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1, VK_F10, VK_F11, VK_F12, VK_F13, VK_F14, VK_F15, VK_F16, VK_F17, VK_F18, VK_F19, VK_F2, VK_F20, VK_F21, VK_F22, VK_F23, VK_F24, VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9, VK_HELP, VK_HOME, VK_INSERT, VK_KANA, VK_LAUNCH_APP1, VK_LAUNCH_APP2, VK_LAUNCH_MAIL, VK_LCONTROL, VK_LEFT, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE, VK_MEDIA_PREV_TRACK, VK_MEDIA_STOP, VK_MENU, VK_MULTIPLY, VK_NEXT, VK_NONCONVERT, VK_NUMLOCK, VK_NUMPAD0, VK_NUMPAD1, VK_NUMPAD2, VK_NUMPAD3, VK_NUMPAD4, VK_NUMPAD5, VK_NUMPAD6, VK_NUMPAD7, VK_NUMPAD8, VK_NUMPAD9, VK_OEM_1, VK_OEM_102, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5, VK_OEM_6, VK_OEM_7, VK_OEM_COMMA, VK_OEM_MINUS, VK_OEM_PERIOD, VK_OEM_PLUS, VK_PAUSE, VK_PLAY, VK_PRINT, VK_PRIOR, VK_RCONTROL, VK_RETURN, VK_RIGHT, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SCROLL, VK_SELECT, VK_SEPARATOR, VK_SHIFT, VK_SNAPSHOT, VK_SPACE, VK_SUBTRACT, VK_TAB, VK_UP, VK_VOLUME_DOWN, VK_VOLUME_MUTE, VK_VOLUME_UP};
-use windows::Win32::UI::WindowsAndMessaging::{CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, LoadCursorW, RegisterClassExW, ShowWindow, TranslateMessage, CW_USEDEFAULT, IDC_ARROW, MSG, SW_SHOWNORMAL, WINDOW_EX_STYLE, WM_KEYDOWN, WM_KEYUP, WNDCLASSEXW, WS_OVERLAPPEDWINDOW};
-use crate::keyboard::key::KeyboardKey;
-use crate::keyboard::Shared;
+use windows::Win32::UI::Input::KeyboardAndMouse::{
+    VK_ADD, VK_APPS, VK_BACK, VK_BROWSER_BACK, VK_BROWSER_FAVORITES, VK_BROWSER_FORWARD,
+    VK_BROWSER_HOME, VK_BROWSER_REFRESH, VK_BROWSER_SEARCH, VK_BROWSER_STOP, VK_CAPITAL, VK_CLEAR,
+    VK_CONTROL, VK_CONVERT, VK_DECIMAL, VK_DELETE, VK_DIVIDE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1,
+    VK_F2, VK_F3, VK_F4, VK_F5, VK_F6, VK_F7, VK_F8, VK_F9, VK_F10, VK_F11, VK_F12, VK_F13, VK_F14,
+    VK_F15, VK_F16, VK_F17, VK_F18, VK_F19, VK_F20, VK_F21, VK_F22, VK_F23, VK_F24, VK_HELP,
+    VK_HOME, VK_INSERT, VK_KANA, VK_LAUNCH_APP1, VK_LAUNCH_APP2, VK_LAUNCH_MAIL, VK_LCONTROL,
+    VK_LEFT, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE,
+    VK_MEDIA_PREV_TRACK, VK_MEDIA_STOP, VK_MENU, VK_MULTIPLY, VK_NEXT, VK_NONCONVERT, VK_NUMLOCK,
+    VK_NUMPAD0, VK_NUMPAD1, VK_NUMPAD2, VK_NUMPAD3, VK_NUMPAD4, VK_NUMPAD5, VK_NUMPAD6, VK_NUMPAD7,
+    VK_NUMPAD8, VK_NUMPAD9, VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5, VK_OEM_6, VK_OEM_7,
+    VK_OEM_102, VK_OEM_COMMA, VK_OEM_MINUS, VK_OEM_PERIOD, VK_OEM_PLUS, VK_PAUSE, VK_PLAY,
+    VK_PRINT, VK_PRIOR, VK_RCONTROL, VK_RETURN, VK_RIGHT, VK_RMENU, VK_RSHIFT, VK_RWIN, VK_SCROLL,
+    VK_SELECT, VK_SEPARATOR, VK_SHIFT, VK_SNAPSHOT, VK_SPACE, VK_SUBTRACT, VK_TAB, VK_UP,
+    VK_VOLUME_DOWN, VK_VOLUME_MUTE, VK_VOLUME_UP,
+};
+use windows::Win32::UI::WindowsAndMessaging::{
+    CW_USEDEFAULT, CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, IDC_ARROW,
+    LoadCursorW, MSG, RegisterClassExW, SW_SHOWNORMAL, ShowWindow, TranslateMessage,
+    WINDOW_EX_STYLE, WM_KEYDOWN, WM_KEYUP, WNDCLASSEXW, WS_OVERLAPPEDWINDOW,
+};
+use windows::core::{PCWSTR, w};
 
 struct KeyboardState {
     shared: Vec<Weak<Shared>>,
@@ -17,16 +36,15 @@ static KEYBOARD_STATE: OnceLock<Mutex<KeyboardState>> = OnceLock::new();
 
 impl KeyboardState {
     fn new() -> Self {
-        KeyboardState {shared: Vec::new()}
+        KeyboardState { shared: Vec::new() }
     }
 
     fn apply_all<F: Fn(&Shared) -> ()>(&mut self, f: F) {
         self.shared.retain(|shared| {
-           if let Some(shared) = shared.upgrade() {
-               f(&shared);
-               true
-           }
-            else {
+            if let Some(shared) = shared.upgrade() {
+                f(&shared);
+                true
+            } else {
                 false
             }
         });
@@ -39,18 +57,17 @@ impl Default for KeyboardState {
     }
 }
 
-
 #[derive(Debug)]
-pub(super) struct PlatformCoalescedKeyboard {
-
-}
+pub(super) struct PlatformCoalescedKeyboard {}
 impl PlatformCoalescedKeyboard {
     pub fn new(shared: &Arc<Shared>) -> Self {
-        KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().shared.push(Arc::downgrade(shared));
-        PlatformCoalescedKeyboard {
-
-        }
-
+        KEYBOARD_STATE
+            .get_or_init(Mutex::default)
+            .lock()
+            .unwrap()
+            .shared
+            .push(Arc::downgrade(shared));
+        PlatformCoalescedKeyboard {}
     }
 }
 
@@ -64,45 +81,55 @@ pub fn kbd_window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, _l_param: LPARAM) 
     match msg {
         m if m == WM_KEYDOWN => {
             if let Some(key) = KeyboardKey::from_vk(w_param.0) {
-                KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-                    shared.set_key_state(key, true, window_ptr);
-                });
+                KEYBOARD_STATE
+                    .get_or_init(Mutex::default)
+                    .lock()
+                    .unwrap()
+                    .apply_all(|shared| {
+                        shared.set_key_state(key, true, window_ptr);
+                    });
                 LRESULT(0)
-            }
-            else {
-                logwise::warn_sync!("Unknown key {key}",key=w_param.0);
+            } else {
+                logwise::warn_sync!("Unknown key {key}", key = w_param.0);
                 LRESULT(1)
             }
         }
         m if m == WM_KEYUP => {
             if let Some(key) = KeyboardKey::from_vk(w_param.0) {
-                KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-                    shared.set_key_state(key, false, window_ptr);
-                });
+                KEYBOARD_STATE
+                    .get_or_init(Mutex::default)
+                    .lock()
+                    .unwrap()
+                    .apply_all(|shared| {
+                        shared.set_key_state(key, false, window_ptr);
+                    });
                 LRESULT(0)
-            }
-            else {
-                logwise::warn_sync!("Unknown key {key}",key=w_param.0);
+            } else {
+                logwise::warn_sync!("Unknown key {key}", key = w_param.0);
                 LRESULT(1)
             }
         }
-        _ => LRESULT(1)
+        _ => LRESULT(1),
     }
 }
 
-extern "system" fn debug_window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM) -> LRESULT {
+extern "system" fn debug_window_proc(
+    hwnd: HWND,
+    msg: u32,
+    w_param: WPARAM,
+    l_param: LPARAM,
+) -> LRESULT {
     println!("got msg hwnd {hwnd:?} msg {msg} w_param {w_param:?} l_param {l_param:?}");
     if crate::window_proc(hwnd, msg, w_param, l_param) == LRESULT(0) {
         return LRESULT(0);
-    }
-    else {
-        unsafe{DefWindowProcW(hwnd,msg,w_param, l_param)}
+    } else {
+        unsafe { DefWindowProcW(hwnd, msg, w_param, l_param) }
     }
 }
 
 pub fn debug_window_show() {
-    let instance = unsafe{GetModuleHandleW(PCWSTR::null())}.expect("Can't get module");
-    let cursor = unsafe{LoadCursorW(None, IDC_ARROW)}.expect("Can't load cursor");
+    let instance = unsafe { GetModuleHandleW(PCWSTR::null()) }.expect("Can't get module");
+    let cursor = unsafe { LoadCursorW(None, IDC_ARROW) }.expect("Can't load cursor");
 
     let class_name = w!("raw_input_debug_window");
     let window_class = WNDCLASSEXW {
@@ -119,31 +146,37 @@ pub fn debug_window_show() {
         lpszClassName: class_name,
         hIconSm: Default::default(),
     };
-    let r = unsafe{RegisterClassExW(&window_class)};
-    assert_ne!(r, 0, "failed to register window class: {:?}",unsafe{GetLastError()});
+    let r = unsafe { RegisterClassExW(&window_class) };
+    assert_ne!(r, 0, "failed to register window class: {:?}", unsafe {
+        GetLastError()
+    });
 
-    let window = unsafe{CreateWindowExW(WINDOW_EX_STYLE(0), //style
-                                 class_name,
-                                 w!("raw input debug window"),
-                                 WS_OVERLAPPEDWINDOW,
-                                 CW_USEDEFAULT, CW_USEDEFAULT, //position
-                                 800, 600, //size
-                                 None, //parent
-                                 None, //menu
-                                 None, //instance
-                                        None,
+    let window = unsafe {
+        CreateWindowExW(
+            WINDOW_EX_STYLE(0), //style
+            class_name,
+            w!("raw input debug window"),
+            WS_OVERLAPPEDWINDOW,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT, //position
+            800,
+            600,  //size
+            None, //parent
+            None, //menu
+            None, //instance
+            None,
+        )
+    }
+    .expect("failed to create window");
 
-    )}.expect("failed to create window");
-
-    unsafe{_ = ShowWindow(window, SW_SHOWNORMAL)};
+    unsafe { _ = ShowWindow(window, SW_SHOWNORMAL) };
 
     // Message loop
     let mut msg = MSG::default();
-    while unsafe{GetMessageW(&mut msg, Some(window), 0, 0).into()} {
-        _ = unsafe{TranslateMessage(&msg)};
-        unsafe{DispatchMessageW(&msg)};
+    while unsafe { GetMessageW(&mut msg, Some(window), 0, 0).into() } {
+        _ = unsafe { TranslateMessage(&msg) };
+        unsafe { DispatchMessageW(&msg) };
     }
-
 }
 pub fn debug_window_hide() {
     todo!()
@@ -305,8 +338,6 @@ impl KeyboardKey {
             //vk_attn, crsel, excel, erase eof,
             v if VK_PLAY.0 as usize == v => Some(KeyboardKey::Play),
             //zoom? noname, pa1, clear
-
-
             _ => None,
         }
     }

@@ -98,15 +98,15 @@ if __name__ == "__main__":
 ```
  */
 
-use std::sync::OnceLock;
-use std::time::Instant;
+use crate::keyboard::key::KeyboardKey;
 use ampsc::{ChannelConsumer, ChannelProducer};
-use atspi::events::mouse::{ButtonEvent};
+use atspi::events::mouse::ButtonEvent;
 use atspi::proxy::device_event_controller::{DeviceEvent, DeviceEventControllerProxy, EventType};
 use some_executor::hint::Hint;
-use some_executor::{Priority, SomeExecutor};
 use some_executor::task::{Configuration, Task};
-use crate::keyboard::key::KeyboardKey;
+use some_executor::{Priority, SomeExecutor};
+use std::sync::OnceLock;
+use std::time::Instant;
 
 static ONCE_SENDER: OnceLock<ChannelProducer<Event>> = OnceLock::new();
 
@@ -120,13 +120,18 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
     let connection = match connection {
         Ok(c) => c,
         Err(e) => {
-            logwise::error_async!("Failed to connect to ATSPI: {e}", e=logwise::privacy::LogIt(e));
+            logwise::error_async!(
+                "Failed to connect to ATSPI: {e}",
+                e = logwise::privacy::LogIt(e)
+            );
             return;
         }
     };
 
     let start_time = Instant::now();
-    let device = DeviceEventControllerProxy::new(&connection.connection()).await.expect("No device event controller proxy");
+    let device = DeviceEventControllerProxy::new(&connection.connection())
+        .await
+        .expect("No device event controller proxy");
 
     let mut modifiers: i32 = 0;
 
@@ -134,7 +139,11 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
         let event = receiver.receive().await.expect("No event");
         match event {
             Event::Key(key, pressed) => {
-                let event_type = if pressed { EventType::KeyPressed } else { EventType::KeyReleased };
+                let event_type = if pressed {
+                    EventType::KeyPressed
+                } else {
+                    EventType::KeyReleased
+                };
                 let is_lock = key == KeyboardKey::CapsLock || key == KeyboardKey::NumLock;
                 //is_lock keys are toggled on/off on RELEASE, not on press.
                 //is_lock keys toggle on BEFORE the event and toggle off AFTER the event is sent!
@@ -145,16 +154,13 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                             //toggle on!
                             modifiers |= key_to_modifier(key);
                             late_toggle_off = false;
-                        }
-                        else {
+                        } else {
                             late_toggle_off = true;
                         }
-                    }
-                    else {
+                    } else {
                         late_toggle_off = false;
                     }
-                }
-                else {
+                } else {
                     late_toggle_off = false;
                 }
                 let is_numlock_enabled = modifiers & key_to_modifier(KeyboardKey::NumLock) != 0;
@@ -184,22 +190,23 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                     event_string: key_to_name(key, is_numlock_enabled),
                     is_text: key_is_text_input(key),
                 };
-                device.notify_listeners_sync(&device_event).await.expect("Failed to notify listeners");
+                device
+                    .notify_listeners_sync(&device_event)
+                    .await
+                    .expect("Failed to notify listeners");
                 //update our modifiers AFTER sending event
                 if is_lock {
                     if late_toggle_off {
                         modifiers &= !key_to_modifier(key);
                     }
-                }
-                else { //standard key handling
+                } else {
+                    //standard key handling
                     if pressed {
                         modifiers |= key_to_modifier(key);
-
                     } else {
                         modifiers &= !key_to_modifier(key);
                     }
                 }
-
             }
             Event::Mouse() => {
                 let event = ButtonEvent {
@@ -208,49 +215,73 @@ async fn ax_loop(mut receiver: ChannelConsumer<Event>) {
                     mouse_x: 0,
                     mouse_y: 0,
                 };
-                connection.send_event(event).await.expect("Can't send event");
+                connection
+                    .send_event(event)
+                    .await
+                    .expect("Can't send event");
             }
         }
     }
     #[allow(unreachable_code)]
     unreachable!("ax_loop should never return");
     //receiver.async_drop().await;
-
 }
 
-fn ax_init() -> ChannelProducer<Event>{
-    ONCE_SENDER.get_or_init(|| {
-        let (sender,receiver) = ampsc::channel();
+fn ax_init() -> ChannelProducer<Event> {
+    ONCE_SENDER
+        .get_or_init(|| {
+            let (sender, receiver) = ampsc::channel();
 
-        let mut ex = some_executor::current_executor::current_executor();
-        let t = Task::without_notifications("linux ax".to_string(), ax_loop(receiver), Configuration::new(Hint::IO, Priority::UserInteractive, Instant::now())).into_objsafe();
-        let o = ex.spawn_objsafe(t);
-        std::mem::forget(o);
-        sender
-    }).clone()
+            let mut ex = some_executor::current_executor::current_executor();
+            let t = Task::without_notifications(
+                "linux ax".to_string(),
+                ax_loop(receiver),
+                Configuration::new(Hint::IO, Priority::UserInteractive, Instant::now()),
+            )
+            .into_objsafe();
+            let o = ex.spawn_objsafe(t);
+            std::mem::forget(o);
+            sender
+        })
+        .clone()
 }
 
 pub fn ax_press(key: KeyboardKey, pressed: bool) {
     let sender = ax_init();
     let mut ex = some_executor::current_executor::current_executor();
-    let t = Task::without_notifications("linux ax".to_string(), async move {
-        let mut sender = sender;
-        sender.send(Event::Key(key, pressed)).await.expect("Failed to send event");
-        sender.async_drop().await;
-    }, Configuration::new(Hint::IO, Priority::UserInteractive, Instant::now())).into_objsafe();
+    let t = Task::without_notifications(
+        "linux ax".to_string(),
+        async move {
+            let mut sender = sender;
+            sender
+                .send(Event::Key(key, pressed))
+                .await
+                .expect("Failed to send event");
+            sender.async_drop().await;
+        },
+        Configuration::new(Hint::IO, Priority::UserInteractive, Instant::now()),
+    )
+    .into_objsafe();
     let o = ex.spawn_objsafe(t);
     std::mem::forget(o);
-
 }
 
 pub fn ax_mouse() {
     let sender = ax_init();
     let mut ex = some_executor::current_executor::current_executor();
-    let t = Task::without_notifications("linux ax".to_string(), async move {
-        let mut sender = sender;
-        sender.send(Event::Mouse()).await.expect("Failed to send event");
-        sender.async_drop().await;
-    }, Configuration::new(Hint::IO, Priority::UserInteractive, Instant::now())).into_objsafe();
+    let t = Task::without_notifications(
+        "linux ax".to_string(),
+        async move {
+            let mut sender = sender;
+            sender
+                .send(Event::Mouse())
+                .await
+                .expect("Failed to send event");
+            sender.async_drop().await;
+        },
+        Configuration::new(Hint::IO, Priority::UserInteractive, Instant::now()),
+    )
+    .into_objsafe();
     let o = ex.spawn_objsafe(t);
     std::mem::forget(o);
 }
@@ -259,95 +290,161 @@ pub fn ax_mouse() {
 fn key_to_id(key: KeyboardKey, is_numlock_enabled: bool) -> i32 {
     match key {
         // Alphabet keys
-        KeyboardKey::A => 0x0061,  // XK_a
-        KeyboardKey::B => 0x0062,  // XK_b
-        KeyboardKey::C => 0x0063,  // XK_c
-        KeyboardKey::D => 0x0064,  // XK_d
-        KeyboardKey::E => 0x0065,  // XK_e
-        KeyboardKey::F => 0x0066,  // XK_f
-        KeyboardKey::G => 0x0067,  // XK_g
-        KeyboardKey::H => 0x0068,  // XK_h
-        KeyboardKey::I => 0x0069,  // XK_i
-        KeyboardKey::J => 0x006a,  // XK_j
-        KeyboardKey::K => 0x006b,  // XK_k
-        KeyboardKey::L => 0x006c,  // XK_l
-        KeyboardKey::M => 0x006d,  // XK_m
-        KeyboardKey::N => 0x006e,  // XK_n
-        KeyboardKey::O => 0x006f,  // XK_o
-        KeyboardKey::P => 0x0070,  // XK_p
-        KeyboardKey::Q => 0x0071,  // XK_q
-        KeyboardKey::R => 0x0072,  // XK_r
-        KeyboardKey::S => 0x0073,  // XK_s
-        KeyboardKey::T => 0x0074,  // XK_t
-        KeyboardKey::U => 0x0075,  // XK_u
-        KeyboardKey::V => 0x0076,  // XK_v
-        KeyboardKey::W => 0x0077,  // XK_w
-        KeyboardKey::X => 0x0078,  // XK_x
-        KeyboardKey::Y => 0x0079,  // XK_y
-        KeyboardKey::Z => 0x007a,  // XK_z
+        KeyboardKey::A => 0x0061, // XK_a
+        KeyboardKey::B => 0x0062, // XK_b
+        KeyboardKey::C => 0x0063, // XK_c
+        KeyboardKey::D => 0x0064, // XK_d
+        KeyboardKey::E => 0x0065, // XK_e
+        KeyboardKey::F => 0x0066, // XK_f
+        KeyboardKey::G => 0x0067, // XK_g
+        KeyboardKey::H => 0x0068, // XK_h
+        KeyboardKey::I => 0x0069, // XK_i
+        KeyboardKey::J => 0x006a, // XK_j
+        KeyboardKey::K => 0x006b, // XK_k
+        KeyboardKey::L => 0x006c, // XK_l
+        KeyboardKey::M => 0x006d, // XK_m
+        KeyboardKey::N => 0x006e, // XK_n
+        KeyboardKey::O => 0x006f, // XK_o
+        KeyboardKey::P => 0x0070, // XK_p
+        KeyboardKey::Q => 0x0071, // XK_q
+        KeyboardKey::R => 0x0072, // XK_r
+        KeyboardKey::S => 0x0073, // XK_s
+        KeyboardKey::T => 0x0074, // XK_t
+        KeyboardKey::U => 0x0075, // XK_u
+        KeyboardKey::V => 0x0076, // XK_v
+        KeyboardKey::W => 0x0077, // XK_w
+        KeyboardKey::X => 0x0078, // XK_x
+        KeyboardKey::Y => 0x0079, // XK_y
+        KeyboardKey::Z => 0x007a, // XK_z
 
         // Number keys
-        KeyboardKey::Num0 => 0x0030,  // XK_0
-        KeyboardKey::Num1 => 0x0031,  // XK_1
-        KeyboardKey::Num2 => 0x0032,  // XK_2
-        KeyboardKey::Num3 => 0x0033,  // XK_3
-        KeyboardKey::Num4 => 0x0034,  // XK_4
-        KeyboardKey::Num5 => 0x0035,  // XK_5
-        KeyboardKey::Num6 => 0x0036,  // XK_6
-        KeyboardKey::Num7 => 0x0037,  // XK_7
-        KeyboardKey::Num8 => 0x0038,  // XK_8
-        KeyboardKey::Num9 => 0x0039,  // XK_9
+        KeyboardKey::Num0 => 0x0030, // XK_0
+        KeyboardKey::Num1 => 0x0031, // XK_1
+        KeyboardKey::Num2 => 0x0032, // XK_2
+        KeyboardKey::Num3 => 0x0033, // XK_3
+        KeyboardKey::Num4 => 0x0034, // XK_4
+        KeyboardKey::Num5 => 0x0035, // XK_5
+        KeyboardKey::Num6 => 0x0036, // XK_6
+        KeyboardKey::Num7 => 0x0037, // XK_7
+        KeyboardKey::Num8 => 0x0038, // XK_8
+        KeyboardKey::Num9 => 0x0039, // XK_9
 
         // Keypad
-        KeyboardKey::Keypad0 => if is_numlock_enabled {0xffb0} else {0xff95} ,  // XK_KP_0, XK_KP_HOME
-        KeyboardKey::Keypad1 => if is_numlock_enabled{0xffb1} else {0xff9c},  // XK_KP_1, XK_KP_END
-        KeyboardKey::Keypad2 => if is_numlock_enabled{0xffb2} else {0xff99},  // XK_KP_2, XK_KP_DOWN
-        KeyboardKey::Keypad3 => if is_numlock_enabled{0xffb3} else {0xff9b},  // XK_KP_3, XK_KP_PAGE_DOWN
-        KeyboardKey::Keypad4 => if is_numlock_enabled{0xffb4} else {0xff96},  // XK_KP_4, XK_KP_LEFT
-        KeyboardKey::Keypad5 => if is_numlock_enabled{0xffb5} else {0xff9d},  // XK_KP_5, XK_KP_BEGIN
-        KeyboardKey::Keypad6 => if is_numlock_enabled{0xffb6} else {0xff98},  // XK_KP_6, XK_KP_RIGHT
-        KeyboardKey::Keypad7 => if is_numlock_enabled{0xffb7} else {0xff97},  // XK_KP_7, XK_KP_UP
-        KeyboardKey::Keypad8 => if is_numlock_enabled{0xffb8} else {0xff9a},  // XK_KP_8, XK_KP_PAGE_UP
-        KeyboardKey::Keypad9 => if is_numlock_enabled{0xffb9} else {0xff9a},  // XK_KP_9, XK_KP_PRIOR
-        KeyboardKey::KeypadDecimal => if is_numlock_enabled{0xffae} else {0xff9f},  // XK_KP_Decimal, XK_KP_Delete
-        KeyboardKey::KeypadMultiply => 0xffaa,  // XK_KP_Multiply
-        KeyboardKey::KeypadPlus => 0xffab,  // XK_KP_Add
-        KeyboardKey::KeypadClear => 0xff0b,  // XK_Clear
-        KeyboardKey::KeypadDivide => 0xffaf,  // XK_KP_Divide
-        KeyboardKey::KeypadEnter => 0xff8d,  // XK_KP_Enter
-        KeyboardKey::KeypadMinus => 0xffad,  // XK_KP_Subtract
-        KeyboardKey::KeypadEquals => 0xffbd,  // XK_KP_Equal
+        KeyboardKey::Keypad0 => {
+            if is_numlock_enabled {
+                0xffb0
+            } else {
+                0xff95
+            }
+        } // XK_KP_0, XK_KP_HOME
+        KeyboardKey::Keypad1 => {
+            if is_numlock_enabled {
+                0xffb1
+            } else {
+                0xff9c
+            }
+        } // XK_KP_1, XK_KP_END
+        KeyboardKey::Keypad2 => {
+            if is_numlock_enabled {
+                0xffb2
+            } else {
+                0xff99
+            }
+        } // XK_KP_2, XK_KP_DOWN
+        KeyboardKey::Keypad3 => {
+            if is_numlock_enabled {
+                0xffb3
+            } else {
+                0xff9b
+            }
+        } // XK_KP_3, XK_KP_PAGE_DOWN
+        KeyboardKey::Keypad4 => {
+            if is_numlock_enabled {
+                0xffb4
+            } else {
+                0xff96
+            }
+        } // XK_KP_4, XK_KP_LEFT
+        KeyboardKey::Keypad5 => {
+            if is_numlock_enabled {
+                0xffb5
+            } else {
+                0xff9d
+            }
+        } // XK_KP_5, XK_KP_BEGIN
+        KeyboardKey::Keypad6 => {
+            if is_numlock_enabled {
+                0xffb6
+            } else {
+                0xff98
+            }
+        } // XK_KP_6, XK_KP_RIGHT
+        KeyboardKey::Keypad7 => {
+            if is_numlock_enabled {
+                0xffb7
+            } else {
+                0xff97
+            }
+        } // XK_KP_7, XK_KP_UP
+        KeyboardKey::Keypad8 => {
+            if is_numlock_enabled {
+                0xffb8
+            } else {
+                0xff9a
+            }
+        } // XK_KP_8, XK_KP_PAGE_UP
+        KeyboardKey::Keypad9 => {
+            if is_numlock_enabled {
+                0xffb9
+            } else {
+                0xff9a
+            }
+        } // XK_KP_9, XK_KP_PRIOR
+        KeyboardKey::KeypadDecimal => {
+            if is_numlock_enabled {
+                0xffae
+            } else {
+                0xff9f
+            }
+        } // XK_KP_Decimal, XK_KP_Delete
+        KeyboardKey::KeypadMultiply => 0xffaa, // XK_KP_Multiply
+        KeyboardKey::KeypadPlus => 0xffab,     // XK_KP_Add
+        KeyboardKey::KeypadClear => 0xff0b,    // XK_Clear
+        KeyboardKey::KeypadDivide => 0xffaf,   // XK_KP_Divide
+        KeyboardKey::KeypadEnter => 0xff8d,    // XK_KP_Enter
+        KeyboardKey::KeypadMinus => 0xffad,    // XK_KP_Subtract
+        KeyboardKey::KeypadEquals => 0xffbd,   // XK_KP_Equal
 
         // Function keys
-        KeyboardKey::F1 => 0xffbe,   // XK_F1
-        KeyboardKey::F2 => 0xffbf,   // XK_F2
-        KeyboardKey::F3 => 0xffc0,   // XK_F3
-        KeyboardKey::F4 => 0xffc1,   // XK_F4
-        KeyboardKey::F5 => 0xffc2,   // XK_F5
-        KeyboardKey::F6 => 0xffc3,   // XK_F6
-        KeyboardKey::F7 => 0xffc4,   // XK_F7
-        KeyboardKey::F8 => 0xffc5,   // XK_F8
-        KeyboardKey::F9 => 0xffc6,   // XK_F9
-        KeyboardKey::F10 => 0xffc7,  // XK_F10
-        KeyboardKey::F11 => 0xffc8,  // XK_F11
-        KeyboardKey::F12 => 0xffc9,  // XK_F12
-        KeyboardKey::F13 => 0xffca,  // XK_F13
-        KeyboardKey::F14 => 0xffcb,  // XK_F14
-        KeyboardKey::F15 => 0xffcc,  // XK_F15
-        KeyboardKey::F16 => 0xffcd,  // XK_F16
-        KeyboardKey::F17 => 0xffce,  // XK_F17
-        KeyboardKey::F18 => 0xffcf,  // XK_F18
-        KeyboardKey::F19 => 0xffd0,  // XK_F19
-        KeyboardKey::F20 => 0xffd1,  // XK_F20
-        KeyboardKey::F21 => 0xffd2,  // XK_F21
-        KeyboardKey::F22 => 0xffd3,  // XK_F22
-        KeyboardKey::F23 => 0xffd4,  // XK_F23
-        KeyboardKey::F24 => 0xffd5,  // XK_F24
+        KeyboardKey::F1 => 0xffbe,  // XK_F1
+        KeyboardKey::F2 => 0xffbf,  // XK_F2
+        KeyboardKey::F3 => 0xffc0,  // XK_F3
+        KeyboardKey::F4 => 0xffc1,  // XK_F4
+        KeyboardKey::F5 => 0xffc2,  // XK_F5
+        KeyboardKey::F6 => 0xffc3,  // XK_F6
+        KeyboardKey::F7 => 0xffc4,  // XK_F7
+        KeyboardKey::F8 => 0xffc5,  // XK_F8
+        KeyboardKey::F9 => 0xffc6,  // XK_F9
+        KeyboardKey::F10 => 0xffc7, // XK_F10
+        KeyboardKey::F11 => 0xffc8, // XK_F11
+        KeyboardKey::F12 => 0xffc9, // XK_F12
+        KeyboardKey::F13 => 0xffca, // XK_F13
+        KeyboardKey::F14 => 0xffcb, // XK_F14
+        KeyboardKey::F15 => 0xffcc, // XK_F15
+        KeyboardKey::F16 => 0xffcd, // XK_F16
+        KeyboardKey::F17 => 0xffce, // XK_F17
+        KeyboardKey::F18 => 0xffcf, // XK_F18
+        KeyboardKey::F19 => 0xffd0, // XK_F19
+        KeyboardKey::F20 => 0xffd1, // XK_F20
+        KeyboardKey::F21 => 0xffd2, // XK_F21
+        KeyboardKey::F22 => 0xffd3, // XK_F22
+        KeyboardKey::F23 => 0xffd4, // XK_F23
+        KeyboardKey::F24 => 0xffd5, // XK_F24
 
         // Special characters
-        KeyboardKey::Space => 0x0020,      // XK_space
-        KeyboardKey::Minus => 0x002d,      // XK_minus
-        KeyboardKey::Equal => 0x003d,      // XK_equal
+        KeyboardKey::Space => 0x0020,        // XK_space
+        KeyboardKey::Minus => 0x002d,        // XK_minus
+        KeyboardKey::Equal => 0x003d,        // XK_equal
         KeyboardKey::LeftBracket => 0x005b,  // XK_bracketleft
         KeyboardKey::RightBracket => 0x005d, // XK_bracketright
         KeyboardKey::Backslash => 0x005c,    // XK_backslash
@@ -362,7 +459,7 @@ fn key_to_id(key: KeyboardKey, is_numlock_enabled: bool) -> i32 {
         KeyboardKey::Return => 0xff0d,        // XK_Return
         KeyboardKey::Tab => 0xff09,           // XK_Tab
         KeyboardKey::Delete => 0xff08,        // XK_backspace
-        KeyboardKey::ForwardDelete => 0xffff,  // XK_Delete
+        KeyboardKey::ForwardDelete => 0xffff, // XK_Delete
         KeyboardKey::Escape => 0xff1b,        // XK_Escape
         KeyboardKey::Home => 0xff50,          // XK_Home
         KeyboardKey::PageUp => 0xff55,        // XK_Page_Up
@@ -387,65 +484,65 @@ fn key_to_id(key: KeyboardKey, is_numlock_enabled: bool) -> i32 {
         KeyboardKey::CapsLock => 0xffe5,     // XK_Caps_Lock
 
         // Media keys
-        KeyboardKey::VolumeUp => 0x1008ff13,    // XF86XK_AudioRaiseVolume
-        KeyboardKey::VolumeDown => 0x1008ff11,   // XF86XK_AudioLowerVolume
-        KeyboardKey::Mute => 0x1008ff12,         // XF86XK_AudioMute
-        KeyboardKey::Play => 0x1008ff14,         // XF86XK_AudioPlay
-        KeyboardKey::Stop => 0x1008ff15,         // XF86XK_AudioStop
+        KeyboardKey::VolumeUp => 0x1008ff13, // XF86XK_AudioRaiseVolume
+        KeyboardKey::VolumeDown => 0x1008ff11, // XF86XK_AudioLowerVolume
+        KeyboardKey::Mute => 0x1008ff12,     // XF86XK_AudioMute
+        KeyboardKey::Play => 0x1008ff14,     // XF86XK_AudioPlay
+        KeyboardKey::Stop => 0x1008ff15,     // XF86XK_AudioStop
         KeyboardKey::PreviousTrack => 0x1008ff16, // XF86XK_AudioPrev
-        KeyboardKey::NextTrack => 0x1008ff17,     // XF86XK_AudioNext
-        KeyboardKey::Eject => 0x1008ff2c,         // XF86XK_Eject
+        KeyboardKey::NextTrack => 0x1008ff17, // XF86XK_AudioNext
+        KeyboardKey::Eject => 0x1008ff2c,    // XF86XK_Eject
 
         // Additional special keys
-        KeyboardKey::PrintScreen => 0xff61,     // XK_Print
-        KeyboardKey::ScrollLock => 0xff14,      // XK_Scroll_Lock
-        KeyboardKey::Pause => 0xff13,           // XK_Pause
-        KeyboardKey::Insert => 0xff63,          // XK_Insert
-        KeyboardKey::NumLock => 0xff7f,         // XK_Num_Lock
-        KeyboardKey::ContextMenu => 0xff67,     // XK_Menu
-        KeyboardKey::Power => 0x1008ff2a,       // XF86XK_PowerOff
+        KeyboardKey::PrintScreen => 0xff61, // XK_Print
+        KeyboardKey::ScrollLock => 0xff14,  // XK_Scroll_Lock
+        KeyboardKey::Pause => 0xff13,       // XK_Pause
+        KeyboardKey::Insert => 0xff63,      // XK_Insert
+        KeyboardKey::NumLock => 0xff7f,     // XK_Num_Lock
+        KeyboardKey::ContextMenu => 0xff67, // XK_Menu
+        KeyboardKey::Power => 0x1008ff2a,   // XF86XK_PowerOff
 
         // Browser keys
-        KeyboardKey::BrowserBack => 0x1008ff26,      // XF86XK_Back
-        KeyboardKey::BrowserForward => 0x1008ff27,   // XF86XK_Forward
-        KeyboardKey::BrowserRefresh => 0x1008ff29,   // XF86XK_Refresh
-        KeyboardKey::BrowserStop => 0x1008ff28,      // XF86XK_Stop
-        KeyboardKey::BrowserSearch => 0x1008ff1b,    // XF86XK_Search
+        KeyboardKey::BrowserBack => 0x1008ff26, // XF86XK_Back
+        KeyboardKey::BrowserForward => 0x1008ff27, // XF86XK_Forward
+        KeyboardKey::BrowserRefresh => 0x1008ff29, // XF86XK_Refresh
+        KeyboardKey::BrowserStop => 0x1008ff28, // XF86XK_Stop
+        KeyboardKey::BrowserSearch => 0x1008ff1b, // XF86XK_Search
         KeyboardKey::BrowserFavorites => 0x1008ff30, // XF86XK_Favorites
-        KeyboardKey::BrowserHome => 0x1008ff18,      // XF86XK_HomePage
+        KeyboardKey::BrowserHome => 0x1008ff18, // XF86XK_HomePage
 
         // Application keys
-        KeyboardKey::LaunchMail => 0x1008ff19,     // XF86XK_Mail
-        KeyboardKey::MediaSelect => 0x1008ff32,    // XF86XK_AudioMedia
-        KeyboardKey::LaunchApp1 => 0x1008ff1c,     // XF86XK_Launch0
-        KeyboardKey::LaunchApp2 => 0x1008ff1d,     // XF86XK_Launch1
+        KeyboardKey::LaunchMail => 0x1008ff19,  // XF86XK_Mail
+        KeyboardKey::MediaSelect => 0x1008ff32, // XF86XK_AudioMedia
+        KeyboardKey::LaunchApp1 => 0x1008ff1c,  // XF86XK_Launch0
+        KeyboardKey::LaunchApp2 => 0x1008ff1d,  // XF86XK_Launch1
 
         // International keys
-        KeyboardKey::JISKana => 0xff2d,            // XK_Kana_Lock
-        KeyboardKey::JISEisu => 0xff2f,            // XK_Eisu_Shift
-        KeyboardKey::JISYen => 0x0a5,              // XK_yen
-        KeyboardKey::JISUnderscore => 0x5f,        // XK_underscore
-        KeyboardKey::JISKeypadComma => 0xffac,     // XK_KP_Separator
-        KeyboardKey::ISOSection => 0xa7,           // XK_section
+        KeyboardKey::JISKana => 0xff2d,              // XK_Kana_Lock
+        KeyboardKey::JISEisu => 0xff2f,              // XK_Eisu_Shift
+        KeyboardKey::JISYen => 0x0a5,                // XK_yen
+        KeyboardKey::JISUnderscore => 0x5f,          // XK_underscore
+        KeyboardKey::JISKeypadComma => 0xffac,       // XK_KP_Separator
+        KeyboardKey::ISOSection => 0xa7,             // XK_section
         KeyboardKey::InternationalBackslash => 0x5c, // XK_backslash
 
         // Edit keys
-        KeyboardKey::Again => 0xff66,     // XK_Redo
-        KeyboardKey::Undo => 0xff65,      // XK_Undo
-        KeyboardKey::Cut => 0xff63,       // XK_Cut
-        KeyboardKey::Copy => 0xff62,      // XK_Copy
-        KeyboardKey::Paste => 0xff63,     // XK_Paste
-        KeyboardKey::Find => 0xff68,      // XK_Find
-        KeyboardKey::Props => 0xff62,     // XK_Execute
-        KeyboardKey::Select => 0xff60,    // XK_Select
-        KeyboardKey::Open => 0xff62,      // XK_Execute
+        KeyboardKey::Again => 0xff66,  // XK_Redo
+        KeyboardKey::Undo => 0xff65,   // XK_Undo
+        KeyboardKey::Cut => 0xff63,    // XK_Cut
+        KeyboardKey::Copy => 0xff62,   // XK_Copy
+        KeyboardKey::Paste => 0xff63,  // XK_Paste
+        KeyboardKey::Find => 0xff68,   // XK_Find
+        KeyboardKey::Props => 0xff62,  // XK_Execute
+        KeyboardKey::Select => 0xff60, // XK_Select
+        KeyboardKey::Open => 0xff62,   // XK_Execute
 
         // Japanese input conversion
         KeyboardKey::Convert => 0xff21,    // XK_Convert
         KeyboardKey::NonConvert => 0xff22, // XK_NonConvert
 
         // System
-        KeyboardKey::WakeUp => 0x1008ff2b,   // XF86XK_WakeUp
+        KeyboardKey::WakeUp => 0x1008ff2b,     // XF86XK_WakeUp
         KeyboardKey::ContextualMenu => 0xff67, // XK_Menu
     }
 }
@@ -508,7 +605,7 @@ fn key_to_x11(key: KeyboardKey) -> i32 {
         KeyboardKey::F10 => 76,
         KeyboardKey::F11 => 95,
         KeyboardKey::F12 => 96,
-        KeyboardKey::F13 => 191,  // Not exact, using alternative mapping
+        KeyboardKey::F13 => 191, // Not exact, using alternative mapping
         KeyboardKey::F14 => 192,
         KeyboardKey::F15 => 193,
         KeyboardKey::F16 => 194,
@@ -539,19 +636,19 @@ fn key_to_x11(key: KeyboardKey) -> i32 {
         KeyboardKey::RightShift => 62,
         KeyboardKey::Control => 37,
         KeyboardKey::RightControl => 105,
-        KeyboardKey::Option => 64,  // Alt_L
+        KeyboardKey::Option => 64,        // Alt_L
         KeyboardKey::RightOption => 108,  // Alt_R
-        KeyboardKey::Command => 133,  // Super_L
-        KeyboardKey::RightCommand => 134,  // Super_R
-        KeyboardKey::Function => 135,  // Menu as fallback
+        KeyboardKey::Command => 133,      // Super_L
+        KeyboardKey::RightCommand => 134, // Super_R
+        KeyboardKey::Function => 135,     // Menu as fallback
         KeyboardKey::CapsLock => 66,
 
         // Navigation
         KeyboardKey::Return => 36,
         KeyboardKey::Tab => 23,
         KeyboardKey::Space => 65,
-        KeyboardKey::Delete => 22,  // BackSpace
-        KeyboardKey::ForwardDelete => 119,  // Delete
+        KeyboardKey::Delete => 22,         // BackSpace
+        KeyboardKey::ForwardDelete => 119, // Delete
         KeyboardKey::Escape => 9,
         KeyboardKey::Home => 110,
         KeyboardKey::PageUp => 112,
@@ -566,7 +663,7 @@ fn key_to_x11(key: KeyboardKey) -> i32 {
         KeyboardKey::KeypadDecimal => 91,
         KeyboardKey::KeypadMultiply => 63,
         KeyboardKey::KeypadPlus => 86,
-        KeyboardKey::KeypadClear => 91,  // Using KP_Delete as equivalent
+        KeyboardKey::KeypadClear => 91, // Using KP_Delete as equivalent
         KeyboardKey::KeypadDivide => 106,
         KeyboardKey::KeypadEnter => 104,
         KeyboardKey::KeypadMinus => 82,
@@ -606,7 +703,7 @@ fn key_to_x11(key: KeyboardKey) -> i32 {
         KeyboardKey::BrowserBack => 166,
         KeyboardKey::BrowserForward => 167,
         KeyboardKey::BrowserRefresh => 181,
-        KeyboardKey::BrowserStop => 174,  // Using AudioStop as alternative
+        KeyboardKey::BrowserStop => 174, // Using AudioStop as alternative
         KeyboardKey::BrowserSearch => 225,
         KeyboardKey::BrowserFavorites => 164,
         KeyboardKey::BrowserHome => 180,
@@ -616,12 +713,12 @@ fn key_to_x11(key: KeyboardKey) -> i32 {
         KeyboardKey::LaunchApp2 => 157,
 
         // Japanese input
-        KeyboardKey::Convert => 100,    // Henkan_Mode
-        KeyboardKey::NonConvert => 102,  // Muhenkan
-        KeyboardKey::JISKana => 101,    // Using Hiragana_Katakana
-        KeyboardKey::JISEisu => 98,     // Using Katakana as alternative
-        KeyboardKey::JISYen => 94,      // Using less/greater as alternative
-        KeyboardKey::JISUnderscore => 20,  // Using minus as alternative
+        KeyboardKey::Convert => 100,      // Henkan_Mode
+        KeyboardKey::NonConvert => 102,   // Muhenkan
+        KeyboardKey::JISKana => 101,      // Using Hiragana_Katakana
+        KeyboardKey::JISEisu => 98,       // Using Katakana as alternative
+        KeyboardKey::JISYen => 94,        // Using less/greater as alternative
+        KeyboardKey::JISUnderscore => 20, // Using minus as alternative
         KeyboardKey::JISKeypadComma => 129,
 
         // Extra keys
@@ -632,16 +729,16 @@ fn key_to_x11(key: KeyboardKey) -> i32 {
         KeyboardKey::Copy => 141,
         KeyboardKey::Paste => 143,
         KeyboardKey::Find => 144,
-        KeyboardKey::Props => 138,  // SunProps
-        KeyboardKey::Select => 0,   // No direct mapping
+        KeyboardKey::Props => 138, // SunProps
+        KeyboardKey::Select => 0,  // No direct mapping
         KeyboardKey::Open => 142,
-        KeyboardKey::ContextMenu => 135,  // Menu
-        KeyboardKey::ContextualMenu => 135,  // Menu
+        KeyboardKey::ContextMenu => 135,    // Menu
+        KeyboardKey::ContextualMenu => 135, // Menu
         KeyboardKey::WakeUp => 151,
 
         // International
-        KeyboardKey::ISOSection => 94,  // Using less/greater as alternative
-        KeyboardKey::InternationalBackslash => 94,  // Using less/greater
+        KeyboardKey::ISOSection => 94, // Using less/greater as alternative
+        KeyboardKey::InternationalBackslash => 94, // Using less/greater
     }
 }
 
@@ -756,7 +853,13 @@ fn key_to_name(key: KeyboardKey, is_numlock_enabled: bool) -> &'static str {
         KeyboardKey::Help => "Help",
 
         // Keypad
-        KeyboardKey::KeypadDecimal => if is_numlock_enabled { "." } else { "KP_Delete" },
+        KeyboardKey::KeypadDecimal => {
+            if is_numlock_enabled {
+                "."
+            } else {
+                "KP_Delete"
+            }
+        }
         KeyboardKey::KeypadMultiply => "*",
         KeyboardKey::KeypadPlus => "+",
         KeyboardKey::KeypadClear => "Clear",
@@ -764,16 +867,76 @@ fn key_to_name(key: KeyboardKey, is_numlock_enabled: bool) -> &'static str {
         KeyboardKey::KeypadEnter => "KP_Enter",
         KeyboardKey::KeypadMinus => "-",
         KeyboardKey::KeypadEquals => "=",
-        KeyboardKey::Keypad0 => if is_numlock_enabled { "0" } else { "KP_Insert" },
-        KeyboardKey::Keypad1 => if is_numlock_enabled { "1" } else { "KP_End" },
-        KeyboardKey::Keypad2 => if is_numlock_enabled { "2" } else { "KP_Down" },
-        KeyboardKey::Keypad3 => if is_numlock_enabled { "3" } else { "KP_Next" }, //Next is somewhat suspicious to me but matches Gnome Help
-        KeyboardKey::Keypad4 => if is_numlock_enabled { "4" } else { "KP_Left" },
-        KeyboardKey::Keypad5 => if is_numlock_enabled { "5" } else { "KP_Begin" },
-        KeyboardKey::Keypad6 => if is_numlock_enabled { "6" } else { "KP_Right" },
-        KeyboardKey::Keypad7 => if is_numlock_enabled { "7" } else { "KP_Home" },
-        KeyboardKey::Keypad8 => if is_numlock_enabled { "8" } else { "KP_Up" },
-        KeyboardKey::Keypad9 => if is_numlock_enabled { "9" } else { "KP_Page_Up" },
+        KeyboardKey::Keypad0 => {
+            if is_numlock_enabled {
+                "0"
+            } else {
+                "KP_Insert"
+            }
+        }
+        KeyboardKey::Keypad1 => {
+            if is_numlock_enabled {
+                "1"
+            } else {
+                "KP_End"
+            }
+        }
+        KeyboardKey::Keypad2 => {
+            if is_numlock_enabled {
+                "2"
+            } else {
+                "KP_Down"
+            }
+        }
+        KeyboardKey::Keypad3 => {
+            if is_numlock_enabled {
+                "3"
+            } else {
+                "KP_Next"
+            }
+        } //Next is somewhat suspicious to me but matches Gnome Help
+        KeyboardKey::Keypad4 => {
+            if is_numlock_enabled {
+                "4"
+            } else {
+                "KP_Left"
+            }
+        }
+        KeyboardKey::Keypad5 => {
+            if is_numlock_enabled {
+                "5"
+            } else {
+                "KP_Begin"
+            }
+        }
+        KeyboardKey::Keypad6 => {
+            if is_numlock_enabled {
+                "6"
+            } else {
+                "KP_Right"
+            }
+        }
+        KeyboardKey::Keypad7 => {
+            if is_numlock_enabled {
+                "7"
+            } else {
+                "KP_Home"
+            }
+        }
+        KeyboardKey::Keypad8 => {
+            if is_numlock_enabled {
+                "8"
+            } else {
+                "KP_Up"
+            }
+        }
+        KeyboardKey::Keypad9 => {
+            if is_numlock_enabled {
+                "9"
+            } else {
+                "KP_Page_Up"
+            }
+        }
 
         // Lock keys
         KeyboardKey::NumLock => "Num_Lock",
@@ -854,88 +1017,85 @@ fn key_to_modifier(key: KeyboardKey) -> i32 {
         KeyboardKey::Command | KeyboardKey::RightCommand => 1 << 6,
         KeyboardKey::NumLock => 1 << 14,
         _ => 0,
-
     }
 }
 
 fn key_is_text_input(key: KeyboardKey) -> bool {
     match key {
         // Letters
-        KeyboardKey::A |
-        KeyboardKey::B |
-        KeyboardKey::C |
-        KeyboardKey::D |
-        KeyboardKey::E |
-        KeyboardKey::F |
-        KeyboardKey::G |
-        KeyboardKey::H |
-        KeyboardKey::I |
-        KeyboardKey::J |
-        KeyboardKey::K |
-        KeyboardKey::L |
-        KeyboardKey::M |
-        KeyboardKey::N |
-        KeyboardKey::O |
-        KeyboardKey::P |
-        KeyboardKey::Q |
-        KeyboardKey::R |
-        KeyboardKey::S |
-        KeyboardKey::T |
-        KeyboardKey::U |
-        KeyboardKey::V |
-        KeyboardKey::W |
-        KeyboardKey::X |
-        KeyboardKey::Y |
-        KeyboardKey::Z => true,
+        KeyboardKey::A
+        | KeyboardKey::B
+        | KeyboardKey::C
+        | KeyboardKey::D
+        | KeyboardKey::E
+        | KeyboardKey::F
+        | KeyboardKey::G
+        | KeyboardKey::H
+        | KeyboardKey::I
+        | KeyboardKey::J
+        | KeyboardKey::K
+        | KeyboardKey::L
+        | KeyboardKey::M
+        | KeyboardKey::N
+        | KeyboardKey::O
+        | KeyboardKey::P
+        | KeyboardKey::Q
+        | KeyboardKey::R
+        | KeyboardKey::S
+        | KeyboardKey::T
+        | KeyboardKey::U
+        | KeyboardKey::V
+        | KeyboardKey::W
+        | KeyboardKey::X
+        | KeyboardKey::Y
+        | KeyboardKey::Z => true,
 
         // Numbers
-        KeyboardKey::Num0 |
-        KeyboardKey::Num1 |
-        KeyboardKey::Num2 |
-        KeyboardKey::Num3 |
-        KeyboardKey::Num4 |
-        KeyboardKey::Num5 |
-        KeyboardKey::Num6 |
-        KeyboardKey::Num7 |
-        KeyboardKey::Num8 |
-        KeyboardKey::Num9 => true,
+        KeyboardKey::Num0
+        | KeyboardKey::Num1
+        | KeyboardKey::Num2
+        | KeyboardKey::Num3
+        | KeyboardKey::Num4
+        | KeyboardKey::Num5
+        | KeyboardKey::Num6
+        | KeyboardKey::Num7
+        | KeyboardKey::Num8
+        | KeyboardKey::Num9 => true,
 
         // Special characters
-        KeyboardKey::Space |
-        KeyboardKey::Minus |
-        KeyboardKey::Equal |
-        KeyboardKey::LeftBracket |
-        KeyboardKey::RightBracket |
-        KeyboardKey::Backslash |
-        KeyboardKey::Semicolon |
-        KeyboardKey::Quote |
-        KeyboardKey::Grave |
-        KeyboardKey::Comma |
-        KeyboardKey::Period |
-        KeyboardKey::Slash => true,
+        KeyboardKey::Space
+        | KeyboardKey::Minus
+        | KeyboardKey::Equal
+        | KeyboardKey::LeftBracket
+        | KeyboardKey::RightBracket
+        | KeyboardKey::Backslash
+        | KeyboardKey::Semicolon
+        | KeyboardKey::Quote
+        | KeyboardKey::Grave
+        | KeyboardKey::Comma
+        | KeyboardKey::Period
+        | KeyboardKey::Slash => true,
 
         // Keypad numbers and symbols (when NumLock is on)
-        KeyboardKey::Keypad0 |
-        KeyboardKey::Keypad1 |
-        KeyboardKey::Keypad2 |
-        KeyboardKey::Keypad3 |
-        KeyboardKey::Keypad4 |
-        KeyboardKey::Keypad5 |
-        KeyboardKey::Keypad6 |
-        KeyboardKey::Keypad7 |
-        KeyboardKey::Keypad8 |
-        KeyboardKey::Keypad9 |
-        KeyboardKey::KeypadDecimal |
-        KeyboardKey::KeypadMultiply |
-        KeyboardKey::KeypadPlus |
-        KeyboardKey::KeypadDivide |
-        KeyboardKey::KeypadMinus |
-        KeyboardKey::KeypadEquals => true,
+        KeyboardKey::Keypad0
+        | KeyboardKey::Keypad1
+        | KeyboardKey::Keypad2
+        | KeyboardKey::Keypad3
+        | KeyboardKey::Keypad4
+        | KeyboardKey::Keypad5
+        | KeyboardKey::Keypad6
+        | KeyboardKey::Keypad7
+        | KeyboardKey::Keypad8
+        | KeyboardKey::Keypad9
+        | KeyboardKey::KeypadDecimal
+        | KeyboardKey::KeypadMultiply
+        | KeyboardKey::KeypadPlus
+        | KeyboardKey::KeypadDivide
+        | KeyboardKey::KeypadMinus
+        | KeyboardKey::KeypadEquals => true,
 
         // Japanese input characters
-        KeyboardKey::JISYen |
-        KeyboardKey::JISUnderscore |
-        KeyboardKey::JISKeypadComma => true,
+        KeyboardKey::JISYen | KeyboardKey::JISUnderscore | KeyboardKey::JISKeypadComma => true,
 
         // Everything else doesn't generate text input
         _ => false,

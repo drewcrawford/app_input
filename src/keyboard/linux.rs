@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: MPL-2.0
+use crate::keyboard::Shared;
+use crate::keyboard::key::KeyboardKey;
+use crate::mouse::linux::motion_event;
+use crate::mouse::sys::{axis_event, button_event, xdg_toplevel_configure_event};
+use memmap2::MmapMut;
 use std::ffi::c_void;
 use std::fs::File;
 use std::os::fd::AsFd;
-use memmap2::MmapMut;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
-use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_client::backend::ObjectId;
-use wayland_client::globals::{registry_queue_init, GlobalListContents};
-use wayland_client::protocol::{wl_compositor, wl_registry, wl_shm};
+use wayland_client::globals::{GlobalListContents, registry_queue_init};
 use wayland_client::protocol::wl_buffer::WlBuffer;
 use wayland_client::protocol::wl_compositor::WlCompositor;
-use wayland_client::protocol::wl_keyboard::{WlKeyboard};
+use wayland_client::protocol::wl_keyboard::WlKeyboard;
 use wayland_client::protocol::wl_pointer::WlPointer;
 use wayland_client::protocol::wl_seat::WlSeat;
 use wayland_client::protocol::wl_shm::{Format, WlShm};
 use wayland_client::protocol::wl_shm_pool::WlShmPool;
 use wayland_client::protocol::wl_surface::WlSurface;
+use wayland_client::protocol::{wl_compositor, wl_registry, wl_shm};
+use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
 use wayland_protocols::xdg::shell::client::xdg_surface::XdgSurface;
 use wayland_protocols::xdg::shell::client::xdg_toplevel;
 use wayland_protocols::xdg::shell::client::xdg_toplevel::XdgToplevel;
 use wayland_protocols::xdg::shell::client::xdg_wm_base::{Event, XdgWmBase};
-use crate::keyboard::key::KeyboardKey;
-use crate::keyboard::{Shared};
-use crate::mouse::linux::motion_event;
-use crate::mouse::sys::{axis_event, button_event, xdg_toplevel_configure_event};
 
 pub(crate) mod ax;
 
 struct KeyboardState {
-    shareds: Vec<Weak<Shared>>
+    shareds: Vec<Weak<Shared>>,
 }
 impl Default for KeyboardState {
     fn default() -> Self {
         KeyboardState {
-            shareds: Vec::new()
+            shareds: Vec::new(),
         }
     }
 }
@@ -52,30 +52,27 @@ impl KeyboardState {
 static KEYBOARD_STATE: OnceLock<Mutex<KeyboardState>> = OnceLock::new();
 
 #[derive(Debug)]
-pub(super) struct PlatformCoalescedKeyboard {
-
-}
+pub(super) struct PlatformCoalescedKeyboard {}
 
 impl PlatformCoalescedKeyboard {
     pub fn new(shared: &Arc<Shared>) -> Self {
-        KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().shareds.push(Arc::downgrade(shared));
-        PlatformCoalescedKeyboard {
-
-        }
+        KEYBOARD_STATE
+            .get_or_init(Mutex::default)
+            .lock()
+            .unwrap()
+            .shareds
+            .push(Arc::downgrade(shared));
+        PlatformCoalescedKeyboard {}
     }
 }
 
-fn create_shm_buffer(
-    _shm: &wl_shm::WlShm,
-    width: u32,
-    height: u32,
-) -> (File, MmapMut) {
+fn create_shm_buffer(_shm: &wl_shm::WlShm, width: u32, height: u32) -> (File, MmapMut) {
     let stride = width * 4;
     let size = stride * height;
     let file = tempfile::tempfile().unwrap();
     file.set_len(size as u64).unwrap();
 
-    let mut mmap = unsafe{MmapMut::map_mut(&file)}.unwrap();
+    let mut mmap = unsafe { MmapMut::map_mut(&file) }.unwrap();
 
     for pixel in mmap.chunks_exact_mut(4) {
         pixel.copy_from_slice(&[0, 0, 0xFF, 0xFF]); //I guess due to endiannness we are actually BGRA?
@@ -84,8 +81,7 @@ fn create_shm_buffer(
     (file, mmap)
 }
 
-struct AppData {
-}
+struct AppData {}
 impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
     fn event(
         _state: &mut Self,
@@ -95,62 +91,115 @@ impl Dispatch<wl_registry::WlRegistry, ()> for AppData {
         _: &Connection,
         _qh: &QueueHandle<AppData>,
     ) {
-        println!("Got registry event {:?}",event);
+        println!("Got registry event {:?}", event);
     }
 }
 
 impl Dispatch<WlCompositor, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlCompositor, event: <WlCompositor as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("Got compositor event {:?}",event);
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlCompositor,
+        event: <WlCompositor as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        println!("Got compositor event {:?}", event);
     }
 }
 
 impl Dispatch<WlShm, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlShm, event: <WlShm as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("Got shm event {:?}",event);
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlShm,
+        event: <WlShm as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        println!("Got shm event {:?}", event);
     }
 }
 
 impl Dispatch<WlSurface, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlSurface, event: <WlSurface as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("got WlSurface event {:?}",event);
-    }   
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlSurface,
+        event: <WlSurface as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        println!("got WlSurface event {:?}", event);
+    }
 }
 impl Dispatch<WlShmPool, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlShmPool, event: <WlShmPool as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("got WlShmPool event {:?}",event);
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlShmPool,
+        event: <WlShmPool as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        println!("got WlShmPool event {:?}", event);
     }
 }
 
 impl Dispatch<WlBuffer, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlBuffer, event: <WlBuffer as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("got WlBuffer event {:?}",event);
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlBuffer,
+        event: <WlBuffer as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        println!("got WlBuffer event {:?}", event);
     }
 }
 
 impl Dispatch<XdgWmBase, ()> for AppData {
-    fn event(_state: &mut Self, proxy: &XdgWmBase, event: <XdgWmBase as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+    fn event(
+        _state: &mut Self,
+        proxy: &XdgWmBase,
+        event: <XdgWmBase as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
         match event {
-            Event::Ping { serial } => {
-                proxy.pong(serial)
-            }
+            Event::Ping { serial } => proxy.pong(serial),
             _ => {
                 println!("Unknown XdgWmBase event: {:?}", event); // Add this line
-
             }
         }
     }
 }
 
 impl Dispatch<XdgSurface, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &XdgSurface, event: <XdgSurface as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("got XdgSurface event {:?}",event);
+    fn event(
+        _state: &mut Self,
+        _proxy: &XdgSurface,
+        event: <XdgSurface as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        println!("got XdgSurface event {:?}", event);
     }
 }
 
 impl Dispatch<WlSeat, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlSeat, event: <WlSeat as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
-        println!("got WlSeat event {:?}",event);
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlSeat,
+        event: <WlSeat as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
+        println!("got WlSeat event {:?}", event);
     }
 }
 
@@ -166,40 +215,61 @@ impl wayland_client::Dispatch<wl_registry::WlRegistry, GlobalListContents> for A
         _conn: &Connection,
         _qhandle: &QueueHandle<AppData>,
     ) {
-        println!("got registry event {:?}",event);
+        println!("got registry event {:?}", event);
     }
 }
 
 impl Dispatch<XdgToplevel, ()> for AppData {
-    fn event(_state: &mut Self, _proxy: &XdgToplevel, event: <XdgToplevel as Proxy>::Event, _data: &(), _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+    fn event(
+        _state: &mut Self,
+        _proxy: &XdgToplevel,
+        event: <XdgToplevel as Proxy>::Event,
+        _data: &(),
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
         match event {
-            xdg_toplevel::Event::Configure {  width, height, states: _ } => {
+            xdg_toplevel::Event::Configure {
+                width,
+                height,
+                states: _,
+            } => {
                 xdg_toplevel_configure_event(width, height);
             }
             _ => {
-                println!("got XdgToplevel event {:?}",event);
-
+                println!("got XdgToplevel event {:?}", event);
             }
         }
     }
 }
 
-
-
 impl Dispatch<WlPointer, ObjectId> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlPointer, event: <WlPointer as Proxy>::Event, window: &ObjectId, _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlPointer,
+        event: <WlPointer as Proxy>::Event,
+        window: &ObjectId,
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
         match event {
-            wayland_client::protocol::wl_pointer::Event::Motion {time,surface_x,surface_y} => {
+            wayland_client::protocol::wl_pointer::Event::Motion {
+                time,
+                surface_x,
+                surface_y,
+            } => {
                 motion_event(time, surface_x, surface_y);
-
             }
-            wayland_client::protocol::wl_pointer::Event::Button {serial: _, time, button, state} => {
-                button_event(time, button, state.into(), window.clone())
-            }
-            wayland_client::protocol::wl_pointer::Event::Axis {time, axis, value} => {
+            wayland_client::protocol::wl_pointer::Event::Button {
+                serial: _,
+                time,
+                button,
+                state,
+            } => button_event(time, button, state.into(), window.clone()),
+            wayland_client::protocol::wl_pointer::Event::Axis { time, axis, value } => {
                 axis_event(time, axis.into(), value, window.clone());
             }
-            _ => println!("got WlPointer event {:?}",event)
+            _ => println!("got WlPointer event {:?}", event),
         }
     }
 }
@@ -210,36 +280,49 @@ Call this from [WlKeyboard] dispatch for [wayland_client::protocol::wl_keyboard:
 pub fn wl_keyboard_event(_serial: u32, _time: u32, key: u32, state: u32, surface_id: ObjectId) {
     if let Some(key) = KeyboardKey::from_vk(key) {
         let down = state == 1;
-        KEYBOARD_STATE.get_or_init(Mutex::default).lock().unwrap().apply_all(|shared| {
-            shared.set_key_state(key, down, surface_id.protocol_id() as *mut c_void)
-        });
+        KEYBOARD_STATE
+            .get_or_init(Mutex::default)
+            .lock()
+            .unwrap()
+            .apply_all(|shared| {
+                shared.set_key_state(key, down, surface_id.protocol_id() as *mut c_void)
+            });
         ax::ax_press(key, down);
-    }
-    else {
+    } else {
         println!("Unknown key {key}");
     }
 }
 
 impl Dispatch<WlKeyboard, ObjectId> for AppData {
-    fn event(_state: &mut Self, _proxy: &WlKeyboard, event: <WlKeyboard as Proxy>::Event, data: &ObjectId, _conn: &Connection, _qhandle: &QueueHandle<Self>) {
+    fn event(
+        _state: &mut Self,
+        _proxy: &WlKeyboard,
+        event: <WlKeyboard as Proxy>::Event,
+        data: &ObjectId,
+        _conn: &Connection,
+        _qhandle: &QueueHandle<Self>,
+    ) {
         match event {
-            wayland_client::protocol::wl_keyboard::Event::Key {serial, time, key, state} => {
+            wayland_client::protocol::wl_keyboard::Event::Key {
+                serial,
+                time,
+                key,
+                state,
+            } => {
                 wl_keyboard_event(serial, time, key, state.into(), data.clone());
             }
-            _ => println!("got WlKeyboard event {:?}",event)
+            _ => println!("got WlKeyboard event {:?}", event),
         }
     }
 }
-
-
 
 pub fn debug_window_show() {
     let conn = Connection::connect_to_env().expect("Can't connect to wayland environment");
     let display = conn.display();
 
-    let mut app_data = AppData {
-    };
-    let (globals, mut event_queue) = registry_queue_init::<AppData>(&conn).expect("Can't initialize registry");
+    let mut app_data = AppData {};
+    let (globals, mut event_queue) =
+        registry_queue_init::<AppData>(&conn).expect("Can't initialize registry");
     let qh = event_queue.handle();
     let _registry = display.get_registry(&qh, ());
     let xdg_wm_base: XdgWmBase = globals.bind(&qh, 6..=6, ()).unwrap();
@@ -247,9 +330,7 @@ pub fn debug_window_show() {
     let compositor: wl_compositor::WlCompositor = globals.bind(&qh, 6..=6, ()).unwrap();
     let shm = globals.bind(&qh, 2..=2, ()).unwrap();
 
-
     let surface = compositor.create_surface(&qh, ());
-
 
     // Create a toplevel surface
     let xdg_surface = xdg_wm_base.get_xdg_surface(&surface, &qh, ());
@@ -257,15 +338,7 @@ pub fn debug_window_show() {
 
     let (file, mmap) = create_shm_buffer(&shm, 200, 200);
     let pool = shm.create_pool(file.as_fd(), mmap.len() as i32, &qh, ());
-    let buffer = pool.create_buffer(
-        0,
-        200,
-        200,
-        200 * 4,
-        Format::Argb8888,
-        &qh,
-        (),
-    );
+    let buffer = pool.create_buffer(0, 200, 200, 200 * 4, Format::Argb8888, &qh, ());
     surface.attach(Some(&buffer), 0, 0);
     surface.commit();
 
@@ -273,9 +346,7 @@ pub fn debug_window_show() {
     let _pointer = seat.get_pointer(&qh, surface.id());
     let _keyboard = seat.get_keyboard(&qh, surface.id());
 
-
     println!("Window should be displayed. Running event loop...");
-
 
     loop {
         event_queue.blocking_dispatch(&mut app_data).unwrap();
@@ -285,7 +356,6 @@ pub fn debug_window_show() {
 pub fn debug_window_hide() {
     todo!()
 }
-
 
 impl KeyboardKey {
     fn from_vk(vk: u32) -> Option<Self> {
@@ -490,9 +560,6 @@ impl KeyboardKey {
             //brightness up/down
             226 => Some(KeyboardKey::MediaSelect),
             _ => None,
-
-
-
         }
     }
 }

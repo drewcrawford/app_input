@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
+use crate::Window;
+use crate::mouse::{MouseWindowLocation, Shared};
 use std::mem::MaybeUninit;
 use std::ptr::NonNull;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::ClientToScreen;
-use windows::Win32::UI::WindowsAndMessaging::{GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP, XBUTTON1, XBUTTON2};
-use crate::mouse::{MouseWindowLocation, Shared};
-use crate::Window;
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetClientRect, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL,
+    WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_XBUTTONDOWN, WM_XBUTTONUP,
+    XBUTTON1, XBUTTON2,
+};
 
 fn get_x_lparam(lparam: LPARAM) -> i16 {
     ((lparam.0 as usize) & 0xFFFF) as u16 as i16
@@ -24,9 +28,8 @@ fn get_wheel_delta_wparam(wparam: WPARAM) -> i16 {
     ((wparam.0 & 0xFFFF_0000) >> 16) as u16 as i16
 }
 
-
 struct MouseState {
-    shareds: Vec<Weak<Shared>>
+    shareds: Vec<Weak<Shared>>,
 }
 impl MouseState {
     fn new() -> Self {
@@ -47,15 +50,19 @@ impl Default for MouseState {
 }
 
 fn apply_all<F: Fn(&Shared)>(f: F) {
-    MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().shareds.retain(|shared |{
-        if let Some(shared) = shared.upgrade() {
-            f(&shared);
-            true
-        }
-        else {
-            false
-        }
-    })
+    MOUSE_STATE
+        .get_or_init(Mutex::default)
+        .lock()
+        .unwrap()
+        .shareds
+        .retain(|shared| {
+            if let Some(shared) = shared.upgrade() {
+                f(&shared);
+                true
+            } else {
+                false
+            }
+        })
 }
 
 static MOUSE_STATE: OnceLock<Mutex<MouseState>> = OnceLock::new();
@@ -69,20 +76,27 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
     match msg {
         msg if msg == WM_MOUSEMOVE => {
             let window = match NonNull::new(hwnd.0) {
-                None => {None}
-                Some(non_null) => {Some(Window(non_null))}
+                None => None,
+                Some(non_null) => Some(Window(non_null)),
             };
             let x = get_x_lparam(l_param);
             let y = get_y_lparam(l_param);
             let mut point = MaybeUninit::uninit();
-            unsafe{ClientToScreen(hwnd, point.as_mut_ptr())}.expect("failed to get client to screen");
+            unsafe { ClientToScreen(hwnd, point.as_mut_ptr()) }
+                .expect("failed to get client to screen");
             // let point = unsafe{point.assume_init()};
 
             let mut rect = MaybeUninit::uninit();
-            unsafe{GetClientRect(hwnd,rect.as_mut_ptr())}.expect("failed to get client rect");
+            unsafe { GetClientRect(hwnd, rect.as_mut_ptr()) }.expect("failed to get client rect");
 
-            let rect = unsafe{rect.assume_init()};
-            let rel_mouse = MouseWindowLocation::new(x as f64, y as f64, rect.right as f64, rect.bottom as f64, window );
+            let rect = unsafe { rect.assume_init() };
+            let rel_mouse = MouseWindowLocation::new(
+                x as f64,
+                y as f64,
+                rect.right as f64,
+                rect.bottom as f64,
+                window,
+            );
 
             apply_all(|shared| {
                 shared.set_window_location(rel_mouse);
@@ -128,14 +142,10 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
         msg if msg == WM_XBUTTONDOWN => {
             let xbutton = get_xbutton_wparam(w_param);
             let key = match xbutton {
-                x if x == XBUTTON1 => {
-                    3
-                }
-                x if x == XBUTTON2 => {
-                    4
-                }
+                x if x == XBUTTON1 => 3,
+                x if x == XBUTTON2 => 4,
                 _ => {
-                    unimplemented!("Unknown xbutton {:?}",xbutton)
+                    unimplemented!("Unknown xbutton {:?}", xbutton)
                 }
             };
             apply_all(|shared| {
@@ -146,14 +156,10 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
         msg if msg == WM_XBUTTONUP => {
             let xbutton = get_xbutton_wparam(w_param);
             let key = match xbutton {
-                x if x == XBUTTON1 => {
-                    3
-                }
-                x if x == XBUTTON2 => {
-                    4
-                }
+                x if x == XBUTTON1 => 3,
+                x if x == XBUTTON2 => 4,
                 _ => {
-                    unimplemented!("Unknown xbutton {:?}",xbutton)
+                    unimplemented!("Unknown xbutton {:?}", xbutton)
                 }
             };
             apply_all(|shared| {
@@ -178,21 +184,20 @@ pub(crate) fn window_proc(hwnd: HWND, msg: u32, w_param: WPARAM, l_param: LPARAM
             LRESULT(0)
         }
 
-        _ => LRESULT(1)
+        _ => LRESULT(1),
     }
-
 }
 
 #[derive(Debug)]
-pub(super) struct PlatformCoalescedMouse {
-
-}
+pub(super) struct PlatformCoalescedMouse {}
 
 impl PlatformCoalescedMouse {
     pub(crate) fn new(shared: &Arc<Shared>) -> PlatformCoalescedMouse {
-        MOUSE_STATE.get_or_init(Mutex::default).lock().unwrap().register_coalesced(shared);
-        PlatformCoalescedMouse {
-
-        }
+        MOUSE_STATE
+            .get_or_init(Mutex::default)
+            .lock()
+            .unwrap()
+            .register_coalesced(shared);
+        PlatformCoalescedMouse {}
     }
 }

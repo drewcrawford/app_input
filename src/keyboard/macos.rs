@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: MPL-2.0
-use std::ffi::c_void;
-use std::sync::Weak;
-use std::sync::Arc;
-use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::Shared;
+use crate::keyboard::key::KeyboardKey;
+use std::ffi::c_void;
+use std::sync::Arc;
+use std::sync::Weak;
 
 #[derive(Debug)]
 pub(super) struct PlatformCoalescedKeyboard {
     imp: *mut c_void,
 }
 
-
-
-
 #[unsafe(no_mangle)]
-unsafe extern "C" fn raw_input_key_notify_func(ctx: *mut c_void, window: *mut c_void, key_code: u16, down: bool) {
-    let shared = unsafe{Weak::from_raw(ctx as *const Shared)};
+unsafe extern "C" fn raw_input_key_notify_func(
+    ctx: *mut c_void,
+    window: *mut c_void,
+    key_code: u16,
+    down: bool,
+) {
+    let shared = unsafe { Weak::from_raw(ctx as *const Shared) };
     if let Some(shared) = shared.upgrade() {
         let key_code = KeyboardKey::from_code(key_code).expect("Unknown key code {key_code}");
         shared.set_key_state(key_code, down, window);
@@ -23,11 +25,9 @@ unsafe extern "C" fn raw_input_key_notify_func(ctx: *mut c_void, window: *mut c_
     std::mem::forget(shared); //keep weak reference alive as it is still owned by the target function
 }
 
-
-
 #[unsafe(no_mangle)]
 unsafe extern "C" fn raw_input_finish_event_context(ctx: *mut c_void) {
-    unsafe{Weak::from_raw(ctx)};
+    unsafe { Weak::from_raw(ctx) };
 }
 
 unsafe extern "C" {
@@ -62,7 +62,7 @@ impl PlatformCoalescedKeyboard {
 
 impl Drop for PlatformCoalescedKeyboard {
     fn drop(&mut self) {
-        unsafe{PlatformCoalescedKeyboardFree(self.imp)}
+        unsafe { PlatformCoalescedKeyboardFree(self.imp) }
     }
 }
 

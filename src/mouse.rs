@@ -10,10 +10,10 @@ pub(crate) mod windows;
 #[cfg(target_os = "linux")]
 pub(crate) mod linux;
 
-use std::ffi::c_void;
-use std::hash::{Hash, Hasher};
 #[cfg(target_os = "macos")]
 pub(crate) use macos as sys;
+use std::ffi::c_void;
+use std::hash::{Hash, Hasher};
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) use wasm as sys;
@@ -21,25 +21,24 @@ pub(crate) use wasm as sys;
 #[cfg(target_os = "windows")]
 pub(crate) use windows as sys;
 
-#[cfg(target_os="linux")]
+#[cfg(target_os = "linux")]
 pub(crate) use linux as sys;
 
+use crate::Window;
+use atomic_float::AtomicF64;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-use atomic_float::AtomicF64;
-use crate::Window;
 
 pub const MOUSE_BUTTON_LEFT: u8 = 0;
 pub const MOUSE_BUTTON_RIGHT: u8 = 1;
 pub const MOUSE_BUTTON_MIDDLE: u8 = 2;
-
 
 /**
 Mouse's location in the window, in points.
 
 Origin at the upper-left.
 */
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct MouseWindowLocation {
     pos_x: f64,
     pos_y: f64,
@@ -48,23 +47,36 @@ pub struct MouseWindowLocation {
     window: Option<Window>,
 }
 
-
 impl MouseWindowLocation {
-    fn new(pos_x: f64, pos_y: f64, window_width: f64, window_height: f64, window: Option<Window>) -> Self {
-        MouseWindowLocation{pos_x, pos_y, window_width, window_height, window}
+    fn new(
+        pos_x: f64,
+        pos_y: f64,
+        window_width: f64,
+        window_height: f64,
+        window: Option<Window>,
+    ) -> Self {
+        MouseWindowLocation {
+            pos_x,
+            pos_y,
+            window_width,
+            window_height,
+            window,
+        }
     }
 
-    pub fn pos_x(&self) -> f64 { self.pos_x }
-    pub fn pos_y(&self) -> f64 { self.pos_y }
-    pub fn window_width(&self) -> f64 { self.window_width }
-    pub fn window_height(&self) -> f64 { self.window_height }
+    pub fn pos_x(&self) -> f64 {
+        self.pos_x
+    }
+    pub fn pos_y(&self) -> f64 {
+        self.pos_y
+    }
+    pub fn window_width(&self) -> f64 {
+        self.window_width
+    }
+    pub fn window_height(&self) -> f64 {
+        self.window_height
+    }
 }
-
-
-
-
-
-
 
 #[derive(Debug)]
 struct Shared {
@@ -77,9 +89,9 @@ struct Shared {
 }
 impl Shared {
     fn new() -> Self {
-        Shared{
+        Shared {
             window: std::sync::Mutex::new(None),
-            buttons: [const {AtomicBool::new(false)}; 255],
+            buttons: [const { AtomicBool::new(false) }; 255],
             scroll_delta_x: AtomicF64::new(0.0),
             scroll_delta_y: AtomicF64::new(0.0),
             last_window: AtomicPtr::new(std::ptr::null_mut()),
@@ -87,26 +99,40 @@ impl Shared {
     }
 
     fn set_window_location(&self, location: MouseWindowLocation) {
-        logwise::debuginternal_sync!("Set mouse window location {location}",location=logwise::privacy::LogIt(&location));
+        logwise::debuginternal_sync!(
+            "Set mouse window location {location}",
+            location = logwise::privacy::LogIt(&location)
+        );
         *self.window.lock().unwrap() = Some(location);
-        self.last_window.store(location.window.map(|e| e.0.as_ptr()).unwrap_or(std::ptr::null_mut()), Ordering::Relaxed)
+        self.last_window.store(
+            location
+                .window
+                .map(|e| e.0.as_ptr())
+                .unwrap_or(std::ptr::null_mut()),
+            Ordering::Relaxed,
+        )
     }
     fn set_key_state(&self, key: u8, down: bool, window: *mut c_void) {
-        logwise::debuginternal_sync!("Set mouse key {key} state {down}",key=key,down=down);
+        logwise::debuginternal_sync!("Set mouse key {key} state {down}", key = key, down = down);
         self.buttons[key as usize].store(down, std::sync::atomic::Ordering::Relaxed);
-        self.last_window.store(window, std::sync::atomic::Ordering::Relaxed);
+        self.last_window
+            .store(window, std::sync::atomic::Ordering::Relaxed);
     }
 
     fn add_scroll_delta(&self, delta_x: f64, delta_y: f64, window: *mut c_void) {
-        logwise::debuginternal_sync!("Add mouse scroll delta {delta_x},{delta_y}",delta_x=delta_x,delta_y=delta_y);
-        self.scroll_delta_x.fetch_add(delta_x, std::sync::atomic::Ordering::Relaxed);
-        self.scroll_delta_y.fetch_add(delta_y, std::sync::atomic::Ordering::Relaxed);
-        self.last_window.store(window, std::sync::atomic::Ordering::Relaxed);
-
+        logwise::debuginternal_sync!(
+            "Add mouse scroll delta {delta_x},{delta_y}",
+            delta_x = delta_x,
+            delta_y = delta_y
+        );
+        self.scroll_delta_x
+            .fetch_add(delta_x, std::sync::atomic::Ordering::Relaxed);
+        self.scroll_delta_y
+            .fetch_add(delta_y, std::sync::atomic::Ordering::Relaxed);
+        self.last_window
+            .store(window, std::sync::atomic::Ordering::Relaxed);
     }
 }
-
-
 
 #[derive(Debug)]
 pub struct Mouse {
@@ -116,27 +142,30 @@ pub struct Mouse {
 
 impl Mouse {
     /**
-    Returns an object that coalesces input from all mice on the system.
-*/
+        Returns an object that coalesces input from all mice on the system.
+    */
     pub fn coalesced() -> Self {
         let shared = Arc::new(Shared::new());
         let coalesced = sys::PlatformCoalescedMouse::new(&shared);
-        Mouse{shared, _sys: coalesced}
+        Mouse {
+            shared,
+            _sys: coalesced,
+        }
     }
 
     #[allow(rustdoc::broken_intra_doc_links)] //references to the platform-specific code
     /**
-    Returns the [MouseWindowLocation]
+        Returns the [MouseWindowLocation]
 
-    # Platform specifics
+        # Platform specifics
 
-    * macOS and wasm require no special considerations.
-    * On windows, you must call [crate::window_proc] from your window.
-    * * On Linux,you must call from appropriate wayland events:
-        * [crate::mouse::linux::motion_event],
-        * [crate::mouse::linux::button_event]
-        * [crate::mouse::linux::xdg_toplevel_configure_event]
-*/
+        * macOS and wasm require no special considerations.
+        * On windows, you must call [crate::window_proc] from your window.
+        * * On Linux,you must call from appropriate wayland events:
+            * [crate::mouse::linux::motion_event],
+            * [crate::mouse::linux::button_event]
+            * [crate::mouse::linux::xdg_toplevel_configure_event]
+    */
     pub fn window_pos(&self) -> Option<MouseWindowLocation> {
         self.shared.window.lock().unwrap().clone()
     }
@@ -156,7 +185,7 @@ impl Mouse {
     pub fn load_clear_scroll_delta(&mut self) -> (f64, f64) {
         let x = self.shared.scroll_delta_x.swap(0.0, Ordering::Relaxed);
         let y = self.shared.scroll_delta_y.swap(0.0, Ordering::Relaxed);
-        (x,y)
+        (x, y)
     }
 }
 
@@ -181,10 +210,12 @@ impl Default for Mouse {
     }
 }
 
-#[cfg(test)] mod test {
+#[cfg(test)]
+mod test {
     use crate::mouse::Mouse;
 
-    #[test] fn test_send_sync() {
+    #[test]
+    fn test_send_sync() {
         //I think basically the platform keyboard type operates as a kind of lifetime marker
         //(the main function is drop).  Accordingly it shouldn't be too bad to expect platforms to
         //implement send if necessary.

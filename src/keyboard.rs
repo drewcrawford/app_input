@@ -4,7 +4,6 @@ use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicPtr};
 
-
 /**
 keys on the keyboard
 */
@@ -34,9 +33,6 @@ pub(crate) use windows as sys;
 #[cfg(target_os = "linux")]
 pub(crate) use linux as sys;
 
-
-
-
 use crate::keyboard::key::KeyboardKey;
 use crate::keyboard::sys::PlatformCoalescedKeyboard;
 
@@ -59,13 +55,16 @@ impl Shared {
     }
 
     fn set_key_state(&self, key: KeyboardKey, state: bool, window_ptr: *mut c_void) {
-        logwise::debuginternal_sync!("Setting key {key} to {state}",key=logwise::privacy::LogIt(key), state=state);
-        self.window_ptr.store(window_ptr, std::sync::atomic::Ordering::Relaxed);
+        logwise::debuginternal_sync!(
+            "Setting key {key} to {state}",
+            key = logwise::privacy::LogIt(key),
+            state = state
+        );
+        self.window_ptr
+            .store(window_ptr, std::sync::atomic::Ordering::Relaxed);
         self.key_states[key as usize].store(state, std::sync::atomic::Ordering::Relaxed);
     }
 }
-
-
 
 #[derive(Debug)]
 pub struct Keyboard {
@@ -100,7 +99,6 @@ impl Keyboard {
     pub fn is_pressed(&self, key: KeyboardKey) -> bool {
         self.shared.key_states[key as usize].load(std::sync::atomic::Ordering::Relaxed)
     }
-
 }
 
 //boilerplate
@@ -128,10 +126,12 @@ impl Default for Keyboard {
     }
 }
 
-#[cfg(test)] mod test {
+#[cfg(test)]
+mod test {
     use crate::keyboard::Keyboard;
 
-    #[test] fn test_send_sync() {
+    #[test]
+    fn test_send_sync() {
         //I think basically the platform keyboard type operates as a kind of lifetime marker
         //(the main function is drop).  Accordingly it shouldn't be too bad to expect platforms to
         //implement send if necessary.
